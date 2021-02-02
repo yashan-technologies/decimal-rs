@@ -98,7 +98,7 @@ impl Decimal {
 
     /// Computes the absolute value of `self`.
     #[inline]
-    pub fn abs(&self) -> Decimal {
+    pub const fn abs(&self) -> Decimal {
         let mut abs_val = *self;
         abs_val.negative = false;
         abs_val
