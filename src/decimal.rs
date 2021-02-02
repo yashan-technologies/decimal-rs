@@ -65,7 +65,7 @@ impl Decimal {
         }
     }
 
-    /// Returns the scale, i.e. the count of significant digits in this decimal.
+    /// Returns the precision, i.e. the count of significant digits in this decimal.
     #[inline]
     pub fn precision(&self) -> u8 {
         U256::from(self.int_val).count_digits() as u8
