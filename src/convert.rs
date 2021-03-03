@@ -371,11 +371,14 @@ impl From<Decimal> for f32 {
 }
 
 impl From<&Decimal> for f64 {
+    #[allow(clippy::comparison_chain)]
     #[inline]
     fn from(val: &Decimal) -> Self {
         let mut v = val.int_val as f64;
 
-        if val.scale != 0 {
+        if val.scale > 0 {
+            v /= 10f64.powi(val.scale as i32);
+        } else if val.scale < 0 {
             v *= 10f64.powi(-val.scale as i32);
         }
 
@@ -797,7 +800,7 @@ mod tests {
         assert_into("0.000000000000001", 0.000000000000001f64);
         assert_into("0.555555555555555", 0.555555555555555f64);
         assert_into("0.55555555555555599", 0.555555555555556f64);
-        assert_into("0.999999999999999", 0.9999999999999991f64);
+        assert_into("0.999999999999999", 0.999999999999999f64);
         assert_into("0.99999999999999999", 1.0f64);
         assert_into("1.00000000000001", 1.00000000000001f64);
         assert_into("1.0000000000000001", 1.0f64);
