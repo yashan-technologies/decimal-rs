@@ -68,7 +68,7 @@
 //! assert_eq!(n1, n2);
 //! ```
 
-mod buf;
+// mod buf;
 mod convert;
 mod decimal;
 mod error;

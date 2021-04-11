@@ -14,7 +14,6 @@
 
 //! Decimal implementation.
 
-use crate::buf::Buf;
 use crate::u256::{POWERS_10, ROUNDINGS, U256};
 use std::cmp::Ordering;
 use std::fmt;
@@ -31,6 +30,8 @@ pub const MIN_SCALE: i16 = -126;
 const SIGN_MASK: u8 = 0x01;
 const SCALE_MASK: u8 = 0x02;
 const SCALE_SHIFT: u8 = 1;
+
+type Buf = stack_buf::StackVec<u8, 256>;
 
 /// High precision decimal.
 #[derive(Copy, Clone, Debug, Eq)]
@@ -109,12 +110,12 @@ impl Decimal {
         let scale = self.scale();
 
         if append_sign && self.is_sign_negative() {
-            buf.write_u8(b'-');
+            buf.push(b'-');
         }
 
         if scale <= 0 {
             write!(buf, "{}", self.int_val).expect("failed to format int_val");
-            buf.write_bytes(b'0', -scale as usize);
+            buf.push_elem(b'0', -scale as usize);
         } else {
             let mut int_buf = Buf::new();
             write!(&mut int_buf, "{}", self.int_val).expect("failed to format int_val");
@@ -122,25 +123,25 @@ impl Decimal {
 
             let len = int.len();
             if len <= scale as usize {
-                buf.write_slice(&[b'0', b'.']);
-                buf.write_bytes(b'0', scale as usize - len);
-                buf.write_slice(int);
+                buf.copy_from_slice(&[b'0', b'.']);
+                buf.push_elem(b'0', scale as usize - len);
+                buf.copy_from_slice(int);
             } else {
                 let (before, after) = int.split_at(len - scale as usize);
 
-                buf.write_slice(before);
-                buf.write_u8(b'.');
+                buf.copy_from_slice(before);
+                buf.push(b'.');
 
                 if let Some(prec) = precision {
                     let after_len = after.len();
                     if prec > after_len {
-                        buf.write_slice(after);
-                        buf.write_bytes(b'0', prec - after_len);
+                        buf.copy_from_slice(after);
+                        buf.push_elem(b'0', prec - after_len);
                     } else {
-                        buf.write_slice(&after[0..prec]);
+                        buf.copy_from_slice(&after[0..prec]);
                     }
                 } else {
-                    buf.write_slice(after);
+                    buf.copy_from_slice(after);
 
                     let s = buf.as_slice();
                     let mut len = s.len();

@@ -59,6 +59,10 @@ let n2 = Decimal::decode(&bytes);
 assert_eq!(n1, n2);
 ```
 
+## Rust Version
+
+This version of `decimal-rs` requires Rust 1.51 or later.
+
 ## License
 
 This project is licensed under the Apache-2.0 license ([LICENSE](LICENSE) or http://www.apache.org/licenses/LICENSE-2.0).
