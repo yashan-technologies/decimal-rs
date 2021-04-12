@@ -14,7 +14,7 @@
 
 //! serde implementation.
 
-use crate::buf::Buf;
+use crate::decimal::Buf;
 use crate::Decimal;
 
 impl serde::Serialize for Decimal {

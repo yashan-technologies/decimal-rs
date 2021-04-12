@@ -31,7 +31,7 @@ const SIGN_MASK: u8 = 0x01;
 const SCALE_MASK: u8 = 0x02;
 const SCALE_SHIFT: u8 = 1;
 
-type Buf = stack_buf::StackVec<u8, 256>;
+pub(crate) type Buf = stack_buf::StackVec<u8, 256>;
 
 /// High precision decimal.
 #[derive(Copy, Clone, Debug, Eq)]
