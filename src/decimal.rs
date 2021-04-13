@@ -175,12 +175,27 @@ impl Decimal {
 
     /// Encodes `self` to `writer` as binary bytes.
     /// Returns total size on success, which is not larger than [`MAX_BINARY_SIZE`].
-    pub fn encode<W: Write>(&self, mut writer: W) -> std::io::Result<usize> {
+    fn internal_encode<W: Write, const COMPACT: bool>(
+        &self,
+        mut writer: W,
+    ) -> std::io::Result<usize> {
         let int_bytes: [u8; 16] = self.int_val.to_le_bytes();
 
         let mut id = 15;
-        while id > 1 && int_bytes[id] == 0 {
+        while id > 0 && int_bytes[id] == 0 {
             id -= 1;
+        }
+
+        if COMPACT && id < 2 && self.scale == 0 && self.is_sign_positive() {
+            return if id == 0 {
+                let size = writer.write(&int_bytes[0..1])?;
+                debug_assert_eq!(size, 1);
+                Ok(1)
+            } else {
+                let size = writer.write(&int_bytes[0..2])?;
+                debug_assert_eq!(size, 2);
+                Ok(2)
+            };
         }
 
         let header = self.encode_header();
@@ -191,11 +206,38 @@ impl Decimal {
         Ok(size)
     }
 
+    /// Encodes `self` to `writer` as binary bytes.
+    /// Returns total size on success, which is not larger than [`MAX_BINARY_SIZE`].
+    #[inline]
+    pub fn encode<W: Write>(&self, writer: W) -> std::io::Result<usize> {
+        self.internal_encode::<_, false>(writer)
+    }
+
+    /// Encodes `self` to `writer` as binary bytes.
+    /// Returns total size on success, which is not larger than [`MAX_BINARY_SIZE`].
+    ///
+    /// The only different from [`Decimal::encode`] is it will compact encoded bytes
+    /// when `self` is zero or small positive integer.
+    #[inline]
+    pub fn compact_encode<W: Write>(&self, writer: W) -> std::io::Result<usize> {
+        self.internal_encode::<_, true>(writer)
+    }
+
     /// Decodes a `Decimal` from binary bytes.
     #[inline]
     pub fn decode(bytes: &[u8]) -> Decimal {
         let len = bytes.len();
-        assert!(len > 2);
+        assert!(len > 0);
+
+        if len <= 2 {
+            let int_val = if len == 1 {
+                bytes[0] as u128
+            } else {
+                ((bytes[1] as u128) << 8) | (bytes[0] as u128)
+            };
+
+            return Decimal::new(int_val, 0, false);
+        }
 
         let flags = bytes[0];
         let abs_scale = bytes[1];
@@ -752,7 +794,7 @@ mod tests {
         fn assert_encoding(num: &str) {
             let num = num.parse::<Decimal>().unwrap();
             let mut buf = Vec::new();
-            let size = num.encode(&mut buf).unwrap();
+            let size = num.compact_encode(&mut buf).unwrap();
             assert_eq!(buf.len(), size);
             let decoded_num = Decimal::decode(&buf);
             assert_eq!(decoded_num, num);
