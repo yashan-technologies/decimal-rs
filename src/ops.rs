@@ -38,7 +38,7 @@ impl Neg for &'_ Decimal {
     #[inline]
     fn neg(self) -> Self::Output {
         if !self.is_zero() {
-            Decimal::new(self.int_val, self.scale, !self.negative)
+            unsafe { Decimal::from_parts_unchecked(self.int_val, self.scale, !self.negative) }
         } else {
             Decimal::ZERO
         }

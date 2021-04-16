@@ -220,7 +220,10 @@ fn parse_str(s: &[u8]) -> Result<(Decimal, &[u8]), DecimalParseError> {
         false
     };
 
-    Ok((Decimal::new(int, scale, negative), s))
+    Ok((
+        unsafe { Decimal::from_parts_unchecked(int, scale, negative) },
+        s,
+    ))
 }
 
 /// Parses a string slice and creates a decimal.

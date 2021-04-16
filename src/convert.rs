@@ -19,7 +19,7 @@ use crate::u256::POWERS_10;
 use crate::DecimalConvertError;
 use std::convert::TryFrom;
 
-const MAX_I128_REPR: i128 = 99_9999_9999_9999_9999_9999_9999_9999_9999_9999_i128;
+pub(crate) const MAX_I128_REPR: i128 = 99_9999_9999_9999_9999_9999_9999_9999_9999_9999_i128;
 
 macro_rules! impl_from_small_int {
     ($ty: ty) => {
@@ -353,7 +353,7 @@ fn base2_to_decimal(bits: u128, exponent2: i32, negative: bool, is_f64: bool) ->
         }
     }
 
-    Some(Decimal::new(bits, -exponent10 as i16, negative))
+    Some(unsafe { Decimal::from_parts_unchecked(bits, -exponent10 as i16, negative) })
 }
 
 impl From<&Decimal> for f32 {
@@ -787,9 +787,9 @@ mod tests {
         assert_into("1.00000001", 1.0f32);
         assert_into("1.23456789e10", 1.2345679e10f32);
         assert_into("1.23456789e-10", 1.2345679e-10f32);
-        assert_into("3.40282347e+38", std::f32::MAX);
-        assert_into("-3.40282347e+38", std::f32::MIN);
-        assert_into("1e39", std::f32::INFINITY);
+        assert_into("3.40282347e+38", f32::MAX);
+        assert_into("-3.40282347e+38", f32::MIN);
+        assert_into("1e39", f32::INFINITY);
         assert_into("1.17549435e-38", 1.1754944e-38f32);
     }
 

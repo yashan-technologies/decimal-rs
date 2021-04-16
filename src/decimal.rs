@@ -14,6 +14,8 @@
 
 //! Decimal implementation.
 
+use crate::convert::MAX_I128_REPR;
+use crate::error::DecimalConvertError;
 use crate::u256::{POWERS_10, ROUNDINGS, U256};
 use std::cmp::Ordering;
 use std::fmt;
@@ -57,13 +59,37 @@ impl Decimal {
         negative: false,
     };
 
+    /// Creates a `Decimal` from parts without boundary checking.
+    ///
+    /// # Safety
+    /// User have to guarantee that `int_val` has at most 38 tens digits and `scale` ranges from `[-126, 130]`.
     #[inline]
-    pub(crate) const fn new(int_val: u128, scale: i16, negative: bool) -> Decimal {
+    pub const unsafe fn from_parts_unchecked(int_val: u128, scale: i16, negative: bool) -> Decimal {
         Decimal {
             int_val,
             scale,
             negative,
         }
+    }
+
+    /// Creates a `Decimal` from parts.
+    ///
+    /// `int_val` has at most 38 tens digits, `scale` ranges from `[-126, 130]`.
+    #[inline]
+    pub const fn from_parts(
+        int_val: u128,
+        scale: i16,
+        negative: bool,
+    ) -> Result<Decimal, DecimalConvertError> {
+        if int_val > MAX_I128_REPR as u128 {
+            return Err(DecimalConvertError::Overflow);
+        }
+
+        if scale > MAX_SCALE || scale < MIN_SCALE {
+            return Err(DecimalConvertError::Overflow);
+        }
+
+        Ok(unsafe { Decimal::from_parts_unchecked(int_val, scale, negative) })
     }
 
     /// Returns the precision, i.e. the count of significant digits in this decimal.
@@ -236,7 +262,7 @@ impl Decimal {
                 ((bytes[1] as u128) << 8) | (bytes[0] as u128)
             };
 
-            return Decimal::new(int_val, 0, false);
+            return unsafe { Decimal::from_parts_unchecked(int_val, 0, false) };
         }
 
         let flags = bytes[0];
@@ -257,7 +283,7 @@ impl Decimal {
         }
         let int = u128::from_le_bytes(int_bytes);
 
-        Decimal::new(int, scale, negative)
+        unsafe { Decimal::from_parts_unchecked(int, scale, negative) }
     }
 
     /// Truncate a value to have `scale` digits after the decimal point.
@@ -280,7 +306,7 @@ impl Decimal {
 
         let int_val = self.int_val / POWERS_10[e as usize].low();
 
-        Decimal::new(int_val, real_scale, self.negative)
+        unsafe { Decimal::from_parts_unchecked(int_val, real_scale, self.negative) }
     }
 
     /// Round a value to have `scale` digits after the decimal point.
@@ -303,7 +329,7 @@ impl Decimal {
 
         let int_val = (self.int_val + ROUNDINGS[e as usize].low()) / POWERS_10[e as usize].low();
 
-        Decimal::new(int_val, real_scale, self.negative)
+        unsafe { Decimal::from_parts_unchecked(int_val, real_scale, self.negative) }
     }
 
     /// Do bounds checking and rounding according to `precision` and `scale`.
@@ -384,7 +410,7 @@ impl Decimal {
             scale += 1;
         }
 
-        Decimal::new(int_val, scale, self.negative)
+        unsafe { Decimal::from_parts_unchecked(int_val, scale, self.negative) }
     }
 
     #[inline]
@@ -419,10 +445,12 @@ impl Decimal {
             let shift_scale = (digits - MAX_PRECISION) as i16;
             let dividend = int_val + ROUNDINGS[shift_scale as usize].low();
             let result = dividend / POWERS_10[shift_scale as usize].low();
-            return Some(Decimal::new(result.low(), scale - shift_scale, negative));
+            return Some(unsafe {
+                Decimal::from_parts_unchecked(result.low(), scale - shift_scale, negative)
+            });
         }
 
-        Some(Decimal::new(int_val.low(), scale, negative))
+        Some(unsafe { Decimal::from_parts_unchecked(int_val.low(), scale, negative) })
     }
 
     #[inline]
@@ -452,7 +480,9 @@ impl Decimal {
 
         let int_val = U256::add128(self.int_val, other.int_val);
         if !int_val.is_decimal_overflowed() && self.scale >= 0 {
-            return Some(Decimal::new(int_val.low(), self.scale, negative));
+            return Some(unsafe {
+                Decimal::from_parts_unchecked(int_val.low(), self.scale, negative)
+            });
         }
 
         Decimal::adjust_scale(int_val, self.scale, negative)
@@ -487,7 +517,9 @@ impl Decimal {
         }
 
         if self.int_val == 0 {
-            return Some(Decimal::new(other.int_val, other.scale, !negative));
+            return Some(unsafe {
+                Decimal::from_parts_unchecked(other.int_val, other.scale, !negative)
+            });
         }
 
         if self.scale != other.scale {
@@ -505,7 +537,7 @@ impl Decimal {
             (other.int_val - self.int_val, !negative)
         };
 
-        Some(Decimal::new(val, self.scale, neg))
+        Some(unsafe { Decimal::from_parts_unchecked(val, self.scale, neg) })
     }
 
     /// Add two decimals,
@@ -549,7 +581,7 @@ impl Decimal {
         let int_val = U256::mul128(self.int_val, other.int_val);
 
         if !int_val.is_decimal_overflowed() && scale == 0 {
-            Some(Decimal::new(int_val.low(), 0, negative))
+            Some(unsafe { Decimal::from_parts_unchecked(int_val.low(), 0, negative) })
         } else {
             Decimal::adjust_scale(int_val, scale, negative)
         }
@@ -589,7 +621,7 @@ impl Decimal {
 
         if self.scale == other.scale {
             let rem = self.int_val % other.int_val;
-            return Some(Decimal::new(rem, self.scale, self.negative));
+            return Some(unsafe { Decimal::from_parts_unchecked(rem, self.scale, self.negative) });
         }
 
         if self.scale < other.scale {
@@ -734,7 +766,7 @@ mod tests {
             precision: Option<usize>,
             expected: &str,
         ) {
-            let dec = Decimal::new(int_val, scale, negative);
+            let dec = Decimal::from_parts(int_val, scale, negative).unwrap();
             let mut buf = Buf::new();
             dec.to_str_internal(append_sign, precision, &mut buf);
             let str = unsafe { std::str::from_utf8_unchecked(buf.as_slice()) };
@@ -755,7 +787,7 @@ mod tests {
     fn test_display() {
         macro_rules! assert_display {
             ($num: expr, $scale: expr, $negative: expr, $fmt: expr,$expected: expr) => {{
-                let dec = Decimal::new($num, $scale, $negative);
+                let dec = Decimal::from_parts($num, $scale, $negative).unwrap();
                 let str = format!($fmt, dec);
                 assert_eq!(str, $expected);
             }};
@@ -769,7 +801,7 @@ mod tests {
         assert_display!(12856, 4, true, "{:.2}", "-1.28");
         assert_display!(12856, 4, true, "{:.6}", "-1.285600");
         assert_display!(1285600, 6, false, "{}", "1.2856");
-        assert_display!(u128::MAX, 0, false, "{}", u128::MAX.to_string());
+        assert_display!(u64::MAX as u128, 0, false, "{}", u64::MAX.to_string());
     }
 
     #[test]
@@ -976,8 +1008,8 @@ mod tests {
     #[test]
     fn test_normalize() {
         fn assert_normalize(val: (u128, i16), expected: (u128, i16)) {
-            let left = Decimal::new(val.0, val.1, false);
-            let right = Decimal::new(expected.0, expected.1, false);
+            let left = Decimal::from_parts(val.0, val.1, false).unwrap();
+            let right = Decimal::from_parts(expected.0, expected.1, false).unwrap();
             assert_eq!(left, right);
             let normal = left.normalize();
             assert_eq!((normal.int_val, normal.scale), expected);
@@ -1001,8 +1033,8 @@ mod tests {
     fn test_hash() {
         use std::collections::hash_map::DefaultHasher;
 
-        let d1 = Decimal::new(12345, 3, false);
-        let d2 = Decimal::new(123450, 4, false);
+        let d1 = Decimal::from_parts(12345, 3, false).unwrap();
+        let d2 = Decimal::from_parts(123450, 4, false).unwrap();
 
         let mut hash1 = DefaultHasher::new();
         let mut hash2 = DefaultHasher::new();
