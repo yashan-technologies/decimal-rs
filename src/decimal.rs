@@ -292,7 +292,11 @@ impl Decimal {
     #[inline]
     pub fn trunc(&self, scale: i16) -> Decimal {
         // Limit the scale value to avoid possible overflow in calculations
-        let real_scale = scale.max(MIN_SCALE).min(MAX_SCALE);
+        let real_scale = if !self.is_zero() {
+            scale.max(MIN_SCALE).min(MAX_SCALE)
+        } else {
+            return Decimal::ZERO;
+        };
 
         if self.scale <= real_scale {
             return *self;
@@ -315,7 +319,11 @@ impl Decimal {
     #[inline]
     pub fn round(&self, scale: i16) -> Decimal {
         // Limit the scale value to avoid possible overflow in calculations
-        let real_scale = scale.max(MIN_SCALE).min(MAX_SCALE);
+        let real_scale = if !self.is_zero() {
+            scale.max(MIN_SCALE).min(MAX_SCALE)
+        } else {
+            return Decimal::ZERO;
+        };
 
         if self.scale <= real_scale {
             return *self;
@@ -924,6 +932,7 @@ mod tests {
             assert_eq!(decimal, expected);
         }
 
+        assert_trunc("0", -1, "0");
         assert_trunc("123456", 0, "123456");
         assert_trunc("123456.123456", 6, "123456.123456");
         assert_trunc("123456.123456", 5, "123456.12345");
@@ -953,6 +962,7 @@ mod tests {
             assert_eq!(decimal, expected);
         }
 
+        assert_round("0", -1, "0");
         assert_round("123456", 0, "123456");
         assert_round("123456.123456", 6, "123456.123456");
         assert_round("123456.123456", 5, "123456.12346");
