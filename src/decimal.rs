@@ -92,6 +92,12 @@ impl Decimal {
         Ok(unsafe { Decimal::from_parts_unchecked(int_val, scale, negative) })
     }
 
+    /// Consumes the `Decimal`, returning `(int_val, scale, negative)`.
+    #[inline]
+    pub const fn into_parts(self) -> (u128, i16, bool) {
+        (self.int_val, self.scale, self.negative)
+    }
+
     /// Returns the precision, i.e. the count of significant digits in this decimal.
     #[inline]
     pub fn precision(&self) -> u8 {
