@@ -1,6 +1,6 @@
 [package]
 name = "decimal-rs"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["David Li <davidli2010@foxmail.com>"]
 edition = "2018"
 readme = "README.md"
