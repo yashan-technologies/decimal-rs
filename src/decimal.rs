@@ -65,10 +65,14 @@ impl Decimal {
     /// User have to guarantee that `int_val` has at most 38 tens digits and `scale` ranges from `[-126, 130]`.
     #[inline]
     pub const unsafe fn from_parts_unchecked(int_val: u128, scale: i16, negative: bool) -> Decimal {
-        Decimal {
-            int_val,
-            scale,
-            negative,
+        if int_val != 0 {
+            Decimal {
+                int_val,
+                scale,
+                negative,
+            }
+        } else {
+            Decimal::ZERO
         }
     }
 

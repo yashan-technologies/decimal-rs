@@ -679,6 +679,7 @@ mod tests {
         assert_rem("-3", "2", "-1");
         assert_rem("3", "-2", "1");
         assert_rem("-3", "-2", "-1");
+        assert_rem("-3", "-1", "0");
         assert_rem("12.34", "1.233", "0.01");
     }
 }
