@@ -182,9 +182,13 @@ impl Decimal {
                     let s = buf.as_slice();
                     let mut len = s.len();
                     while len > 1 {
-                        if s[len - 1] == b'0' {
+                        let ch = s[len - 1];
+                        if ch == b'0' {
                             len -= 1;
                         } else {
+                            if ch == b'.' {
+                                len -= 1;
+                            }
                             break;
                         }
                     }
@@ -811,10 +815,20 @@ mod tests {
             }};
         }
 
+        assert_display!(0, -1, false, "{}", "0");
+        assert_display!(1, 0, false, "{}", "1");
+        assert_display!(1, 1, false, "{}", "0.1");
+        assert_display!(1, -1, false, "{}", "10");
+        assert_display!(10, 0, false, "{}", "10");
+        assert_display!(10, 1, false, "{}", "1");
+        assert_display!(10, -1, false, "{}", "100");
         assert_display!(128, 0, false, "{}", "128");
         assert_display!(128, -2, true, "{}", "-12800");
         assert_display!(128, 4, true, "{}", "-0.0128");
         assert_display!(128, 2, true, "{}", "-1.28");
+        assert_display!(12800, 1, false, "{}", "1280");
+        assert_display!(12800, 2, false, "{}", "128");
+        assert_display!(12800, 3, false, "{}", "12.8");
         assert_display!(12856, 4, true, "{}", "-1.2856");
         assert_display!(12856, 4, true, "{:.2}", "-1.28");
         assert_display!(12856, 4, true, "{:.6}", "-1.285600");
