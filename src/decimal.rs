@@ -621,10 +621,22 @@ impl Decimal {
             return Some(Decimal::ZERO);
         }
 
+        let (self_int_val, shift_precision) = if self.precision() < other.precision() {
+            let p = MAX_PRECISION + (other.precision() - self.precision()) as u32;
+            (
+                POWERS_10[p as usize] * self.int_val,
+                other.precision() - self.precision(),
+            )
+        } else {
+            (
+                U256::mul128(self.int_val, POWERS_10[MAX_PRECISION as usize].low()),
+                0,
+            )
+        };
+
         let negative = self.negative ^ other.negative;
-        let self_int_val = U256::mul128(self.int_val, POWERS_10[MAX_PRECISION as usize].low());
         let int_val = self_int_val.div128_round(other.int_val);
-        let scale = self.scale - other.scale + MAX_PRECISION as i16;
+        let scale = self.scale - other.scale + MAX_PRECISION as i16 + shift_precision as i16;
 
         Decimal::adjust_scale(int_val, scale, negative)
     }
