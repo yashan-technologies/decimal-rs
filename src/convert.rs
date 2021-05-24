@@ -374,15 +374,16 @@ impl From<&Decimal> for f64 {
     #[allow(clippy::comparison_chain)]
     #[inline]
     fn from(val: &Decimal) -> Self {
-        let mut v = val.int_val as f64;
+        let n = val.normalize();
+        let mut v = n.int_val as f64;
 
-        if val.scale > 0 {
-            v /= 10f64.powf(val.scale as f64);
-        } else if val.scale < 0 {
-            v *= 10f64.powf(-val.scale as f64);
+        if n.scale > 0 {
+            v /= 10f64.powf(n.scale as f64);
+        } else if n.scale < 0 {
+            v *= 10f64.powf(-n.scale as f64);
         }
 
-        if val.negative {
+        if n.negative {
             v = -v;
         }
 
@@ -817,6 +818,8 @@ mod tests {
             "-2145.5294117647058823529411764705882353",
             -2145.5294117647059f64,
         );
+        assert_into("7661.049086167562", 7661.049086167562f64);
+        assert_into("7661049086167562000e-15", 7661.049086167562f64);
     }
 
     #[test]
