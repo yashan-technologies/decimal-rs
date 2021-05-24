@@ -13,7 +13,7 @@ documentation = "https://docs.rs/decimal-rs/"
 
 [dependencies]
 ethnum = "1.0.3"
-thiserror = "1.0.24"
+thiserror = "1.0.25"
 stack-buf = "0.1.6"
 serde = { version = "1.0.126", optional = true }
 
