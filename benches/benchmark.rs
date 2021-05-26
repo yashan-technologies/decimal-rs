@@ -43,6 +43,7 @@ fn try_from<T: TryInto<Decimal, Error = DecimalConvertError>>(val: T) -> Decimal
     val.try_into().unwrap()
 }
 
+#[allow(clippy::excessive_precision)]
 fn decimal_from_f64(bench: &mut Bencher) {
     bench.iter(|| {
         let _n = try_from(black_box(12345678901.23456789_f64));
