@@ -696,6 +696,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::excessive_precision)]
     fn test_try_from_f32() {
         assert_try_from_overflow(std::f32::INFINITY);
         assert_try_from_overflow(std::f32::NEG_INFINITY);
@@ -722,6 +723,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::excessive_precision)]
     fn test_try_from_f64() {
         assert_try_from_overflow(std::f64::INFINITY);
         assert_try_from_overflow(std::f64::NEG_INFINITY);
@@ -795,6 +797,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::excessive_precision)]
     fn test_into_f64() {
         assert_into("0", 0f64);
         assert_into("1", 1f64);
