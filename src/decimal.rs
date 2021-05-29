@@ -621,11 +621,14 @@ impl Decimal {
             return Some(Decimal::ZERO);
         }
 
-        let (self_int_val, shift_precision) = if self.precision() < other.precision() {
-            let p = MAX_PRECISION + (other.precision() - self.precision()) as u32;
+        let other_precision = other.precision();
+        let self_precision = self.precision();
+
+        let (self_int_val, shift_precision) = if other_precision > self_precision {
+            let p = MAX_PRECISION + (other_precision - self_precision) as u32;
             (
                 POWERS_10[p as usize] * self.int_val,
-                other.precision() - self.precision(),
+                other_precision - self_precision,
             )
         } else {
             (
@@ -661,8 +664,27 @@ impl Decimal {
         if self.scale < other.scale {
             let e = other.scale - self.scale;
             debug_assert!(e > 0);
+
             if e as u32 > MAX_PRECISION {
-                return Some(*self);
+                let (self_int_val, scale) = if e as usize >= POWERS_10.len() {
+                    (
+                        POWERS_10[MAX_PRECISION as usize] * self.int_val,
+                        self.scale + MAX_PRECISION as i16,
+                    )
+                } else {
+                    (
+                        POWERS_10[(other.scale - self.scale) as usize] * self.int_val,
+                        other.scale,
+                    )
+                };
+
+                let (_int_val, rem) = self_int_val.div_rem(other.int_val);
+
+                return Some(Decimal {
+                    int_val: rem.low(),
+                    scale,
+                    negative: self.negative,
+                });
             }
 
             let self_int_val = U256::mul128(self.int_val, POWERS_10[e as usize].low());
@@ -673,7 +695,7 @@ impl Decimal {
             let e = self.scale - other.scale;
             debug_assert!(e > 0);
             if e as u32 > MAX_PRECISION {
-                return None;
+                return Some(*self);
             }
 
             let other_int_val = U256::mul128(other.int_val, POWERS_10[e as usize].low());
