@@ -155,6 +155,14 @@ fn decimal_hash(bench: &mut Bencher) {
     })
 }
 
+fn decimal_cmp(bench: &mut Bencher) {
+    let x = parse("12345678901.23456789");
+    let y = parse("12345.67890123456789");
+    bench.iter(|| {
+        let _n = black_box(x > y);
+    })
+}
+
 benchmark_group!(
     decimal_benches,
     decimal_parse,
@@ -171,6 +179,7 @@ benchmark_group!(
     decimal_decode,
     decimal_normalize,
     decimal_hash,
+    decimal_cmp,
 );
 
 benchmark_main!(decimal_benches);

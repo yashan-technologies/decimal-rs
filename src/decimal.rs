@@ -785,6 +785,16 @@ impl Ord for Decimal {
             (self, other)
         };
 
+        if left.is_zero() {
+            return if right.is_zero() {
+                Ordering::Equal
+            } else {
+                Ordering::Less
+            };
+        } else if right.is_zero() {
+            return Ordering::Greater;
+        }
+
         if left.scale == right.scale {
             // fast path for same scale
             return left.int_val.cmp(&right.int_val);
@@ -967,6 +977,14 @@ mod tests {
         assert_cmp!(
             "-9.9999999999999999999999999999999999999", <, "1"
         );
+        assert_cmp!("4703178999618078116505370421100e39", >, "0");
+        assert_cmp!("4703178999618078116505370421100e-39", >, "0");
+        assert_cmp!("-4703178999618078116505370421100e39", <, "0");
+        assert_cmp!("-4703178999618078116505370421100e-39", <, "0");
+        assert_cmp!("0", <, "4703178999618078116505370421100e39");
+        assert_cmp!("0", <, "4703178999618078116505370421100e-39");
+        assert_cmp!("0", >, "-4703178999618078116505370421100e39");
+        assert_cmp!("0", >, "-4703178999618078116505370421100e-39");
     }
 
     #[test]
