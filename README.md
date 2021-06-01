@@ -6,11 +6,9 @@
 
 High precision decimal with maximum precision of 38.
 
-## Optional features
+## Feature Flags
 
-### `serde`
-
-When this optional dependency is enabled, `Decimal` implements the `serde::Serialize` and `serde::Deserialize` traits.
+- `serde`: When this optional dependency is enabled, `Decimal` implements the `serde::Serialize` and `serde::Deserialize` traits.
 
 ## Usage
 

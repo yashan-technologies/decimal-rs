@@ -68,6 +68,8 @@
 //! assert_eq!(n1, n2);
 //! ```
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 // mod buf;
 mod convert;
 mod decimal;
