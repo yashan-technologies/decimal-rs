@@ -17,6 +17,7 @@
 use crate::decimal::Buf;
 use crate::Decimal;
 
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl serde::Serialize for Decimal {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -37,6 +38,7 @@ impl serde::Serialize for Decimal {
     }
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de> serde::Deserialize<'de> for Decimal {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
