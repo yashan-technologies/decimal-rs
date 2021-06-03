@@ -21,13 +21,13 @@ use thiserror::Error;
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum DecimalParseError {
     /// Empty string.
-    #[error("cannot parse decimal from empty string")]
+    #[error("cannot parse number from empty string")]
     Empty,
     /// Invalid decimal.
-    #[error("invalid decimal literal")]
+    #[error("invalid number")]
     Invalid,
     /// Decimal is overflowed.
-    #[error("value overflows decimal format")]
+    #[error("numeric overflow")]
     Overflow,
 }
 
@@ -35,10 +35,10 @@ pub enum DecimalParseError {
 #[derive(Clone, Debug, Eq, PartialEq, Error)]
 pub enum DecimalConvertError {
     /// Invalid decimal.
-    #[error("cannot convert to decimal")]
+    #[error("invalid number")]
     Invalid,
     /// Decimal is overflowed.
-    #[error("value is out of range")]
+    #[error("numeric overflow")]
     Overflow,
 }
 
