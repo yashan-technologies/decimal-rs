@@ -16,6 +16,7 @@
 
 use crate::decimal::Decimal;
 use std::convert::TryFrom;
+use std::iter::{Product, Sum};
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
@@ -142,6 +143,18 @@ impl RemAssign for Decimal {
     fn rem_assign(&mut self, other: Decimal) {
         let result = self.rem(other);
         *self = result;
+    }
+}
+
+impl Sum for Decimal {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Decimal::ZERO, Add::add)
+    }
+}
+
+impl Product for Decimal {
+    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Decimal::ONE, Mul::mul)
     }
 }
 
@@ -707,5 +720,37 @@ mod tests {
             "2e88",
         );
         assert_rem("3", "5e42", "3");
+    }
+
+    #[test]
+    fn test_sum() {
+        fn assert_sum(vals: &[&str], expected: &str) {
+            let result: Decimal = vals
+                .into_iter()
+                .map(|val| val.parse::<Decimal>().unwrap())
+                .sum();
+            let expected = expected.parse::<Decimal>().unwrap();
+            assert_eq!(result, expected);
+        }
+
+        assert_sum(&["1", "10", "100", "1000", "10000"], "11111");
+        assert_sum(&["-1", "-10", "-100", "-1000", "-10000"], "-11111");
+        assert_sum(&["0", "0", "0", "0", "0"], "0");
+    }
+
+    #[test]
+    fn test_product() {
+        fn assert_product(vals: &[&str], expected: &str) {
+            let result: Decimal = vals
+                .into_iter()
+                .map(|val| val.parse::<Decimal>().unwrap())
+                .product();
+            let expected = expected.parse::<Decimal>().unwrap();
+            assert_eq!(result, expected);
+        }
+
+        assert_product(&["1", "2", "3", "4", "5"], "120");
+        assert_product(&["-1", "-2", "-3", "-4", "-5"], "-120");
+        assert_product(&["0", "0", "0", "0", "0"], "0");
     }
 }
