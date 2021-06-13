@@ -70,7 +70,6 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-// mod buf;
 mod convert;
 mod decimal;
 mod error;
