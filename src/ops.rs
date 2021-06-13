@@ -147,12 +147,14 @@ impl RemAssign for Decimal {
 }
 
 impl Sum for Decimal {
+    #[inline(always)]
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(Decimal::ZERO, Add::add)
     }
 }
 
 impl Product for Decimal {
+    #[inline(always)]
     fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(Decimal::ONE, Mul::mul)
     }
@@ -725,10 +727,7 @@ mod tests {
     #[test]
     fn test_sum() {
         fn assert_sum(vals: &[&str], expected: &str) {
-            let result: Decimal = vals
-                .into_iter()
-                .map(|val| val.parse::<Decimal>().unwrap())
-                .sum();
+            let result: Decimal = vals.iter().map(|val| val.parse::<Decimal>().unwrap()).sum();
             let expected = expected.parse::<Decimal>().unwrap();
             assert_eq!(result, expected);
         }
@@ -742,7 +741,7 @@ mod tests {
     fn test_product() {
         fn assert_product(vals: &[&str], expected: &str) {
             let result: Decimal = vals
-                .into_iter()
+                .iter()
                 .map(|val| val.parse::<Decimal>().unwrap())
                 .product();
             let expected = expected.parse::<Decimal>().unwrap();
