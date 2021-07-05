@@ -15,6 +15,7 @@ documentation = "https://docs.rs/decimal-rs/"
 ethnum = "1.0.3"
 thiserror = "1.0.25"
 stack-buf = "0.1.6"
+fast-float = "0.2.0"
 serde = { version = "1.0.126", optional = true }
 
 [dev-dependencies]

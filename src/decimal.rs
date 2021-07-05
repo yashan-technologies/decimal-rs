@@ -142,7 +142,12 @@ impl Decimal {
     }
 
     #[inline]
-    fn to_str_internal(&self, append_sign: bool, precision: Option<usize>, buf: &mut Buf) {
+    pub(crate) fn to_str_internal(
+        &self,
+        append_sign: bool,
+        precision: Option<usize>,
+        buf: &mut Buf,
+    ) {
         let scale = self.scale();
 
         if append_sign && self.is_sign_negative() {

@@ -14,7 +14,7 @@
 
 //! Conversion between `Decimal` and primitive number types.
 
-use crate::decimal::{Decimal, MAX_PRECISION};
+use crate::decimal::{Buf, Decimal, MAX_PRECISION, MAX_SCALE};
 use crate::u256::POWERS_10;
 use crate::DecimalConvertError;
 use std::convert::TryFrom;
@@ -374,20 +374,42 @@ impl From<&Decimal> for f64 {
     #[allow(clippy::comparison_chain)]
     #[inline]
     fn from(val: &Decimal) -> Self {
+        const POWERS_10: [f64; MAX_SCALE as usize + 1] = [
+            1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15,
+            1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22, 1e23, 1e24, 1e25, 1e26, 1e27, 1e28, 1e29,
+            1e30, 1e31, 1e32, 1e33, 1e34, 1e35, 1e36, 1e37, 1e38, 1e39, 1e40, 1e41, 1e42, 1e43,
+            1e44, 1e45, 1e46, 1e47, 1e48, 1e49, 1e50, 1e51, 1e52, 1e53, 1e54, 1e55, 1e56, 1e57,
+            1e58, 1e59, 1e60, 1e61, 1e62, 1e63, 1e64, 1e65, 1e66, 1e67, 1e68, 1e69, 1e70, 1e71,
+            1e72, 1e73, 1e74, 1e75, 1e76, 1e77, 1e78, 1e79, 1e80, 1e81, 1e82, 1e83, 1e84, 1e85,
+            1e86, 1e87, 1e88, 1e89, 1e90, 1e91, 1e92, 1e93, 1e94, 1e95, 1e96, 1e97, 1e98, 1e99,
+            1e100, 1e101, 1e102, 1e103, 1e104, 1e105, 1e106, 1e107, 1e108, 1e109, 1e110, 1e111,
+            1e112, 1e113, 1e114, 1e115, 1e116, 1e117, 1e118, 1e119, 1e120, 1e121, 1e122, 1e123,
+            1e124, 1e125, 1e126, 1e127, 1e128, 1e129, 1e130,
+        ];
+
         let n = val.normalize();
-        let mut v = n.int_val as f64;
 
-        if n.scale > 0 {
-            v /= 10f64.powf(n.scale as f64);
-        } else if n.scale < 0 {
-            v *= 10f64.powf(-n.scale as f64);
+        // f64 can only accurately represent numbers <= 9007199254740992
+        if n.int_val <= 9007199254740992 {
+            let mut v = n.int_val as f64;
+
+            if n.scale > 0 {
+                v /= POWERS_10[n.scale as usize];
+            } else if n.scale < 0 {
+                v *= POWERS_10[-n.scale as usize];
+            }
+
+            if n.negative {
+                v = -v;
+            }
+
+            v
+        } else {
+            let mut buf = Buf::new();
+            val.to_str_internal(true, None, &mut buf);
+            let str = unsafe { std::str::from_utf8_unchecked(buf.as_slice()) };
+            fast_float::parse(str).unwrap()
         }
-
-        if n.negative {
-            v = -v;
-        }
-
-        v
     }
 }
 
@@ -810,9 +832,8 @@ mod tests {
         assert_into("1.0000000000000001", 1.0f64);
         assert_into("1.7976931348623157e+108", 1.7976931348623156e+108f64);
         assert_into("-1.7976931348623157e+108", -1.7976931348623156e+108f64);
-        // TODO: failed on individual computers
-        // assert_into("1e126", 1.0e126f64);
-        assert_into("2.2250738585072014e-114", 2.2250738585072016e-114f64);
+        assert_into("1e126", 1.0e126f64);
+        assert_into("2.2250738585072014e-114", 2.2250738585072014e-114f64);
         assert_into(
             "2145.5294117647058823529411764705882353",
             2145.5294117647059f64,
@@ -823,6 +844,8 @@ mod tests {
         );
         assert_into("7661.049086167562", 7661.049086167562f64);
         assert_into("7661049086167562000e-15", 7661.049086167562f64);
+        assert_into("1962868503.32829189300537109375", 1962868503.328292f64);
+        assert_into("9007199254740992e125", 9007199254740992e125);
     }
 
     #[test]
