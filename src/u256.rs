@@ -541,13 +541,10 @@ mod tests {
         let mut val = U256::from(1u64);
         let ten = U256::from(10u64);
         for i in 0..77 {
-            let v = if i == 0 {
-                val
-            } else {
+            if i != 0 {
                 val = val.wrapping_mul(ten);
-                val
             };
-            println!("U256::from_u128({}, {}),", v.low(), v.high(),);
+            println!("U256::from_u128({}, {}),", val.low(), val.high(),);
         }
     }
 

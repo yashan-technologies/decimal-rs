@@ -406,7 +406,7 @@ impl From<&Decimal> for f64 {
             v
         } else {
             let mut buf = Buf::new();
-            val.to_str_internal(true, None, &mut buf);
+            val.fmt_internal(true, None, &mut buf);
             let str = unsafe { std::str::from_utf8_unchecked(buf.as_slice()) };
             fast_float::parse(str).unwrap()
         }

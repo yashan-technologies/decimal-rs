@@ -142,12 +142,7 @@ impl Decimal {
     }
 
     #[inline]
-    pub(crate) fn to_str_internal(
-        &self,
-        append_sign: bool,
-        precision: Option<usize>,
-        buf: &mut Buf,
-    ) {
+    pub(crate) fn fmt_internal(&self, append_sign: bool, precision: Option<usize>, buf: &mut Buf) {
         let scale = self.scale();
 
         if append_sign && self.is_sign_negative() {
@@ -715,7 +710,7 @@ impl fmt::Display for Decimal {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut buf = Buf::new();
-        self.to_str_internal(false, f.precision(), &mut buf);
+        self.fmt_internal(false, f.precision(), &mut buf);
         let str = unsafe { std::str::from_utf8_unchecked(buf.as_slice()) };
         f.pad_integral(self.is_sign_positive(), "", str)
     }
@@ -828,7 +823,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_to_str_internal() {
+    fn test_fmt_internal() {
         fn assert(
             int_val: u128,
             scale: i16,
@@ -839,7 +834,7 @@ mod tests {
         ) {
             let dec = Decimal::from_parts(int_val, scale, negative).unwrap();
             let mut buf = Buf::new();
-            dec.to_str_internal(append_sign, precision, &mut buf);
+            dec.fmt_internal(append_sign, precision, &mut buf);
             let str = unsafe { std::str::from_utf8_unchecked(buf.as_slice()) };
             assert_eq!(str, expected);
         }
