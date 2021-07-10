@@ -163,6 +163,13 @@ fn decimal_cmp(bench: &mut Bencher) {
     })
 }
 
+fn decimal_sqrt(bench: &mut Bencher) {
+    let x = parse("12345678901.23456789");
+    bench.iter(|| {
+        let _n = black_box(&x).sqrt();
+    })
+}
+
 benchmark_group!(
     decimal_benches,
     decimal_parse,
@@ -180,6 +187,7 @@ benchmark_group!(
     decimal_normalize,
     decimal_hash,
     decimal_cmp,
+    decimal_sqrt,
 );
 
 benchmark_main!(decimal_benches);

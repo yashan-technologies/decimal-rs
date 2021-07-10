@@ -59,6 +59,13 @@ impl Decimal {
         negative: false,
     };
 
+    /// i.e. `0.5`.
+    const ZERO_POINT_FIVE: Decimal = Decimal {
+        int_val: 5,
+        scale: 1,
+        negative: false,
+    };
+
     /// Creates a `Decimal` from parts without boundary checking.
     ///
     /// # Safety
@@ -704,6 +711,36 @@ impl Decimal {
             Decimal::adjust_scale(rem, self.scale, self.negative)
         }
     }
+
+    /// Computes the square root of a decimal,
+    /// returning None if `self` is negative or the results in overflow.
+    #[inline]
+    pub fn sqrt(&self) -> Option<Decimal> {
+        if self.negative {
+            return None;
+        }
+
+        if self.is_zero() {
+            return Some(Decimal::ZERO);
+        }
+
+        let mut result = self.checked_mul(Decimal::ZERO_POINT_FIVE)?;
+        let mut last = result;
+
+        loop {
+            let val = self.checked_div(result)?;
+            result = result.checked_add(val)?;
+            result = result.checked_mul(Decimal::ZERO_POINT_FIVE)?;
+
+            if result == last {
+                break;
+            }
+
+            last = result;
+        }
+
+        Some(result)
+    }
 }
 
 impl fmt::Display for Decimal {
@@ -991,7 +1028,7 @@ mod tests {
     fn test_abs() {
         fn assert_abs(val: &str, expected: &str) {
             let abs_val = val.parse::<Decimal>().unwrap().abs();
-            let expected = expected.parse::<Decimal>().unwrap().abs();
+            let expected = expected.parse::<Decimal>().unwrap();
             assert_eq!(abs_val, expected);
         }
 
@@ -1129,5 +1166,65 @@ mod tests {
         d2.hash(&mut hash2);
 
         assert_eq!(hash1.finish(), hash2.finish());
+    }
+
+    #[test]
+    fn test_sqrt() {
+        fn assert_sqrt(val: &str, expected: &str) {
+            let num = val.parse::<Decimal>().unwrap();
+            let expected = expected.parse::<Decimal>().unwrap();
+            let result = num.sqrt().unwrap();
+            assert_eq!(result, expected);
+        }
+
+        assert_sqrt("0", "0");
+        assert_sqrt("0.00000", "0");
+        assert_sqrt("1", "1");
+        assert_sqrt("1.001", "1.0004998750624609648232582877001097531");
+        assert_sqrt("1.44", "1.2");
+        assert_sqrt("2", "1.4142135623730950488016887242096980786");
+        assert_sqrt("100", "10");
+        assert_sqrt("49", "7");
+        assert_sqrt("0.25", "0.5");
+        assert_sqrt("0.0152399025", "0.12345");
+        assert_sqrt("152399025", "12345");
+        assert_sqrt("0.00400", "0.063245553203367586639977870888654370675");
+        assert_sqrt("0.1", "0.31622776601683793319988935444327185337");
+        assert_sqrt("2", "1.4142135623730950488016887242096980786");
+        assert_sqrt("125348", "354.04519485512015631084871931761013143");
+        assert_sqrt(
+            "18446744073709551616.1099511",
+            "4294967296.0000000000127999926917254925",
+        );
+        assert_sqrt(
+            "3.1415926535897931159979634685441851615",
+            "1.7724538509055159927515191031392484393",
+        );
+        assert_sqrt(
+            "0.000000000089793115997963468544185161590576171875",
+            "0.0000094759229628550415175617837401442254225",
+        );
+        assert_sqrt(
+            "0.71777001097629639227453423431674136248",
+            "0.84721308475276536670429805177990207040",
+        );
+        assert_sqrt(
+            "0.012345679012345679012345679012345679012",
+            "0.11111111111111111111111111111111111111",
+        );
+        assert_sqrt(
+            "0.11088900000000000000000000000000000444",
+            "0.33300000000000000000000000000000000667",
+        );
+        assert_sqrt(
+            "17014118346046923173168730371588410572",
+            "4124817371235594858.7903221175243613899",
+        );
+        assert_sqrt(
+            "0.17014118346046923173168730371588410572",
+            "0.41248173712355948587903221175243613899",
+        );
+        assert_sqrt("1e100", "1e50");
+        assert_sqrt("1.01e100", "1.0049875621120890270219264912759576187e50");
     }
 }
