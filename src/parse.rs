@@ -189,18 +189,40 @@ fn parse_str(s: &[u8]) -> Result<(Decimal, &[u8]), DecimalParseError> {
         s,
     ) = parse_decimal(s)?;
 
+    let mut integral = integral;
+    let mut scale = -exp;
+
     let precision = if integral == b"0" {
+        // fractional only
         let zero_count = fractional.iter().take_while(|i| **i == b'0').count();
         (fractional.len() - zero_count) as u32
     } else {
-        (integral.len() + fractional.len()) as u32
+        let int_len = integral.len() as u32;
+        if !fractional.is_empty() {
+            int_len + fractional.len() as u32
+        } else if int_len <= MAX_PRECISION {
+            // integral only
+            int_len
+        } else {
+            // integral only, but length is overflowed
+            // count trailing zero of integral
+            let zero_count = integral.iter().rev().take_while(|i| **i == b'0').count();
+            if zero_count == 0 {
+                int_len
+            } else {
+                let new_len = int_len as usize - zero_count;
+                integral = &integral[0..new_len];
+                scale -= zero_count as i16;
+                new_len as u32
+            }
+        }
     };
 
     if precision > MAX_PRECISION {
         return Err(DecimalParseError::Overflow);
     }
 
-    let scale = fractional.len() as i16 - exp;
+    scale += fractional.len() as i16;
     if scale > MAX_SCALE || scale < MIN_SCALE {
         return Err(DecimalParseError::Overflow);
     }
@@ -307,7 +329,6 @@ mod tests {
         assert_parse_overflow("1e1000");
         assert_parse_overflow("1e127");
         assert_parse_overflow("1e-131");
-        assert_parse_overflow("999999999999999999999999999999999999990");
     }
 
     fn assert_parse<S: AsRef<str>, V: AsRef<str>>(s: S, expected: V) {
@@ -345,6 +366,14 @@ mod tests {
         );
         assert_parse("000000000123", "123");
         assert_parse("-000000000123", "-123");
+        assert_parse(
+            "170141183460469231713240559642175554110",
+            "170141183460469231713240559642175554110",
+        );
+        assert_parse(
+            "999999999999999999999999999999999999990000000000",
+            "999999999999999999999999999999999999990000000000",
+        );
 
         // Floating-point number
         assert_parse("0.0", "0");
