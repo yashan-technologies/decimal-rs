@@ -489,7 +489,9 @@ impl Decimal {
         let e = other.scale - self.scale;
         debug_assert!(e > 0);
         if e as u32 > MAX_PRECISION {
-            return Some(*self);
+            return Some(unsafe {
+                Decimal::from_parts_unchecked(self.int_val, self.scale, negative)
+            });
         }
 
         let self_int_val = U256::mul128(self.int_val, POWERS_10[e as usize].low());
@@ -524,7 +526,9 @@ impl Decimal {
         let e = other.scale - self.scale;
         debug_assert!(e > 0);
         if e as u32 > MAX_PRECISION {
-            return Some(*self);
+            return Some(unsafe {
+                Decimal::from_parts_unchecked(self.int_val, self.scale, negative)
+            });
         }
 
         let self_int_val = U256::mul128(self.int_val, POWERS_10[e as usize].low());
