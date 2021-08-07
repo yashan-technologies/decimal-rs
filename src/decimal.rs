@@ -87,11 +87,7 @@ impl Decimal {
     ///
     /// `int_val` has at most 38 tens digits, `scale` ranges from `[-126, 130]`.
     #[inline]
-    pub const fn from_parts(
-        int_val: u128,
-        scale: i16,
-        negative: bool,
-    ) -> Result<Decimal, DecimalConvertError> {
+    pub const fn from_parts(int_val: u128, scale: i16, negative: bool) -> Result<Decimal, DecimalConvertError> {
         if int_val > MAX_I128_REPR as u128 {
             return Err(DecimalConvertError::Overflow);
         }
@@ -222,10 +218,7 @@ impl Decimal {
 
     /// Encodes `self` to `writer` as binary bytes.
     /// Returns total size on success, which is not larger than [`MAX_BINARY_SIZE`].
-    fn internal_encode<W: Write, const COMPACT: bool>(
-        &self,
-        mut writer: W,
-    ) -> std::io::Result<usize> {
+    fn internal_encode<W: Write, const COMPACT: bool>(&self, mut writer: W) -> std::io::Result<usize> {
         let int_bytes: [u8; 16] = self.int_val.to_le_bytes();
 
         let mut id = 15;
@@ -474,9 +467,7 @@ impl Decimal {
             let shift_scale = (digits - MAX_PRECISION) as i16;
             let dividend = int_val + ROUNDINGS[shift_scale as usize].low();
             let result = dividend / POWERS_10[shift_scale as usize].low();
-            return Some(unsafe {
-                Decimal::from_parts_unchecked(result.low(), scale - shift_scale, negative)
-            });
+            return Some(unsafe { Decimal::from_parts_unchecked(result.low(), scale - shift_scale, negative) });
         }
 
         Some(unsafe { Decimal::from_parts_unchecked(int_val.low(), scale, negative) })
@@ -497,9 +488,7 @@ impl Decimal {
                 }
             }
 
-            return Some(unsafe {
-                Decimal::from_parts_unchecked(self.int_val, self.scale, negative)
-            });
+            return Some(unsafe { Decimal::from_parts_unchecked(self.int_val, self.scale, negative) });
         }
 
         let self_int_val = U256::mul128(self.int_val, POWERS_10[e as usize].low());
@@ -519,9 +508,7 @@ impl Decimal {
 
         let int_val = U256::add128(self.int_val, other.int_val);
         if !int_val.is_decimal_overflowed() && self.scale >= 0 {
-            return Some(unsafe {
-                Decimal::from_parts_unchecked(int_val.low(), self.scale, negative)
-            });
+            return Some(unsafe { Decimal::from_parts_unchecked(int_val.low(), self.scale, negative) });
         }
 
         Decimal::adjust_scale(int_val, self.scale, negative)
@@ -542,9 +529,7 @@ impl Decimal {
                 }
             }
 
-            return Some(unsafe {
-                Decimal::from_parts_unchecked(self.int_val, self.scale, negative)
-            });
+            return Some(unsafe { Decimal::from_parts_unchecked(self.int_val, self.scale, negative) });
         }
 
         let self_int_val = U256::mul128(self.int_val, POWERS_10[e as usize].low());
@@ -566,9 +551,7 @@ impl Decimal {
         }
 
         if self.int_val == 0 {
-            return Some(unsafe {
-                Decimal::from_parts_unchecked(other.int_val, other.scale, !negative)
-            });
+            return Some(unsafe { Decimal::from_parts_unchecked(other.int_val, other.scale, !negative) });
         }
 
         if self.scale != other.scale {
@@ -653,15 +636,9 @@ impl Decimal {
 
         let (self_int_val, shift_precision) = if other_precision > self_precision {
             let p = MAX_PRECISION + (other_precision - self_precision) as u32;
-            (
-                POWERS_10[p as usize] * self.int_val,
-                other_precision - self_precision,
-            )
+            (POWERS_10[p as usize] * self.int_val, other_precision - self_precision)
         } else {
-            (
-                U256::mul128(self.int_val, POWERS_10[MAX_PRECISION as usize].low()),
-                0,
-            )
+            (U256::mul128(self.int_val, POWERS_10[MAX_PRECISION as usize].low()), 0)
         };
 
         let negative = self.negative ^ other.negative;
@@ -1166,10 +1143,7 @@ mod tests {
             (9_9999_9999_9999_9999_9999_9999_9999_9999_9999_u128, -2),
             (99_9999_9999_9999_9999_9999_9999_9999_9999_9990_u128, -1),
         );
-        assert_normalize(
-            (12300, MIN_SCALE + 1),
-            (12300000000000000000000000000000000000, -92),
-        );
+        assert_normalize((12300, MIN_SCALE + 1), (12300000000000000000000000000000000000, -92));
     }
 
     #[test]

@@ -237,16 +237,9 @@ fn parse_str(s: &[u8]) -> Result<(Decimal, &[u8]), DecimalParseError> {
         int = int * 10 + (i - b'0') as u128;
     }
 
-    let negative = if int != 0 {
-        sign == Sign::Negative
-    } else {
-        false
-    };
+    let negative = if int != 0 { sign == Sign::Negative } else { false };
 
-    Ok((
-        unsafe { Decimal::from_parts_unchecked(int, scale, negative) },
-        s,
-    ))
+    Ok((unsafe { Decimal::from_parts_unchecked(int, scale, negative) }, s))
 }
 
 /// Parses a string slice and creates a decimal.
