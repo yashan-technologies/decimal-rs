@@ -337,20 +337,18 @@ impl U256 {
     }
 
     #[inline(always)]
-    pub fn overflowing_add<T: Into<U256>>(&self, other: T) -> (U256, bool) {
-        let (add, overflow) = self.0.overflowing_add(other.into().0);
-        (U256(add), overflow)
+    pub fn checked_add<T: Into<U256>>(&self, other: T) -> Option<U256> {
+        self.0.checked_add(other.into().0).map(U256)
     }
 
     #[inline(always)]
-    pub fn overflowing_sub<T: Into<U256>>(&self, other: T) -> (U256, bool) {
-        let (add, overflow) = self.0.overflowing_sub(other.into().0);
-        (U256(add), overflow)
+    pub fn checked_sub<T: Into<U256>>(&self, other: T) -> Option<U256> {
+        self.0.checked_sub(other.into().0).map(U256)
     }
 
     #[inline(always)]
-    pub fn checked_mul(&self, other: U256) -> Option<U256> {
-        self.0.checked_mul(other.0).map(U256)
+    pub fn checked_mul<T: Into<U256>>(&self, other: T) -> Option<U256> {
+        self.0.checked_mul(other.into().0).map(U256)
     }
 
     #[inline(always)]

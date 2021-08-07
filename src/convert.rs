@@ -442,7 +442,7 @@ impl TryFrom<&Decimal> for u128 {
             return Err(DecimalConvertError::Overflow);
         }
 
-        let result = POWERS_10[-d.scale as usize].checked_mul(d.int_val.into());
+        let result = POWERS_10[-d.scale as usize].checked_mul(d.int_val);
         match result {
             Some(prod) => {
                 if prod.high() != 0 {
@@ -497,7 +497,7 @@ impl TryFrom<&Decimal> for i128 {
             return Err(DecimalConvertError::Overflow);
         }
 
-        let result = POWERS_10[-d.scale as usize].checked_mul(d.int_val.into());
+        let result = POWERS_10[-d.scale as usize].checked_mul(d.int_val);
         match result {
             Some(prod) => {
                 if prod.high() != 0 {

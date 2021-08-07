@@ -489,6 +489,14 @@ impl Decimal {
         let e = other.scale - self.scale;
         debug_assert!(e > 0);
         if e as u32 > MAX_PRECISION {
+            if (e as usize) < POWERS_10.len() {
+                if let Some(self_int_val) = POWERS_10[e as usize].checked_mul(self.int_val) {
+                    if let Some(int_val) = self_int_val.checked_add(other.int_val) {
+                        return Decimal::adjust_scale(int_val, other.scale, negative);
+                    }
+                }
+            }
+
             return Some(unsafe {
                 Decimal::from_parts_unchecked(self.int_val, self.scale, negative)
             });
@@ -526,6 +534,14 @@ impl Decimal {
         let e = other.scale - self.scale;
         debug_assert!(e > 0);
         if e as u32 > MAX_PRECISION {
+            if (e as usize) < POWERS_10.len() {
+                if let Some(self_int_val) = POWERS_10[e as usize].checked_mul(self.int_val) {
+                    if let Some(int_val) = self_int_val.checked_sub(other.int_val) {
+                        return Decimal::adjust_scale(int_val, other.scale, negative);
+                    }
+                }
+            }
+
             return Some(unsafe {
                 Decimal::from_parts_unchecked(self.int_val, self.scale, negative)
             });
@@ -732,7 +748,7 @@ impl Decimal {
         let mut last = result;
 
         loop {
-            let val = self.checked_div(result)?;
+            let val = self.checked_div(result)?.normalize();
             result = result.checked_add(val)?;
             result = result.checked_mul(Decimal::ZERO_POINT_FIVE)?;
 
@@ -1230,5 +1246,7 @@ mod tests {
         );
         assert_sqrt("1e100", "1e50");
         assert_sqrt("1.01e100", "1.0049875621120890270219264912759576187e50");
+        assert_sqrt("1e-100", "1e-50");
+        assert_sqrt("1.01e-100", "1.0049875621120890270219264912759576187e-50");
     }
 }
