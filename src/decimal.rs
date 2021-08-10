@@ -465,9 +465,15 @@ impl Decimal {
 
         if digits > MAX_PRECISION {
             let shift_scale = (digits - MAX_PRECISION) as i16;
-            let dividend = int_val + ROUNDINGS[shift_scale as usize].low();
-            let result = dividend / POWERS_10[shift_scale as usize].low();
-            return Some(unsafe { Decimal::from_parts_unchecked(result.low(), scale - shift_scale, negative) });
+            return if shift_scale as u32 <= MAX_PRECISION {
+                let dividend = int_val + ROUNDINGS[shift_scale as usize].low();
+                let result = dividend / POWERS_10[shift_scale as usize].low();
+                Some(unsafe { Decimal::from_parts_unchecked(result.low(), scale - shift_scale, negative) })
+            } else {
+                let dividend = int_val + ROUNDINGS[shift_scale as usize];
+                let result = dividend / POWERS_10[shift_scale as usize];
+                Some(unsafe { Decimal::from_parts_unchecked(result.low(), scale - shift_scale, negative) })
+            };
         }
 
         Some(unsafe { Decimal::from_parts_unchecked(int_val.low(), scale, negative) })
