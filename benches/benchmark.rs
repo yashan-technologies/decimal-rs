@@ -38,6 +38,14 @@ fn decimal_to_string(bench: &mut Bencher) {
     })
 }
 
+fn decimal_precision(bench: &mut Bencher) {
+    let val = parse("12345678901.23456789");
+    bench.iter(|| {
+        let _n = black_box(&val).precision();
+        black_box(_n);
+    })
+}
+
 #[inline(always)]
 fn try_from<T: TryInto<Decimal, Error = DecimalConvertError>>(val: T) -> Decimal {
     val.try_into().unwrap()
@@ -174,6 +182,7 @@ benchmark_group!(
     decimal_benches,
     decimal_parse,
     decimal_to_string,
+    decimal_precision,
     decimal_into_f64,
     decimal_from_f64,
     decimal_into_u64,

@@ -146,18 +146,28 @@ impl Decimal {
 
     #[inline]
     pub(crate) fn fmt_internal(&self, append_sign: bool, precision: Option<usize>, buf: &mut Buf) {
-        let scale = self.scale();
+        let dec = if let Some(prec) = precision {
+            self.round(prec as i16)
+        } else {
+            *self
+        };
+
+        let scale = dec.scale();
 
         if append_sign && self.is_sign_negative() {
             buf.push(b'-');
         }
 
         if scale <= 0 {
-            write!(buf, "{}", self.int_val).expect("failed to format int_val");
+            write!(buf, "{}", dec.int_val).expect("failed to format int_val");
             buf.push_elem(b'0', -scale as usize);
+            if let Some(prec) = precision {
+                buf.push(b'.');
+                buf.push_elem(b'0', prec);
+            }
         } else {
             let mut int_buf = Buf::new();
-            write!(&mut int_buf, "{}", self.int_val).expect("failed to format int_val");
+            write!(&mut int_buf, "{}", dec.int_val).expect("failed to format int_val");
             let int = int_buf.as_slice();
 
             let len = int.len();
@@ -884,7 +894,7 @@ mod tests {
         assert(128, 4, true, true, None, "-0.0128");
         assert(128, 2, true, false, None, "1.28");
         assert(12856, 4, true, false, None, "1.2856");
-        assert(12856, 4, true, false, Some(2), "1.28");
+        assert(12856, 4, true, false, Some(2), "1.29");
         assert(12856, 4, true, false, Some(6), "1.285600");
         assert(1285600, 6, false, false, None, "1.2856");
     }
@@ -914,10 +924,13 @@ mod tests {
         assert_display!(12800, 2, false, "{}", "128");
         assert_display!(12800, 3, false, "{}", "12.8");
         assert_display!(12856, 4, true, "{}", "-1.2856");
-        assert_display!(12856, 4, true, "{:.2}", "-1.28");
+        assert_display!(12856, 4, true, "{:.2}", "-1.29");
         assert_display!(12856, 4, true, "{:.6}", "-1.285600");
+        assert_display!(12856, 0, true, "{:.6}", "-12856.000000");
         assert_display!(1285600, 6, false, "{}", "1.2856");
         assert_display!(u64::MAX as u128, 0, false, "{}", u64::MAX.to_string());
+        assert_display!(101, -98, false, "{:.10}", "10100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0000000000");
+        assert_display!(101, 98, false, "{:.10}", "0.0000000000");
     }
 
     #[test]
