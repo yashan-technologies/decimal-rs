@@ -162,7 +162,7 @@ impl TryFrom<f32> for Decimal {
         // left the mantissa 23 bits. The exponent is reduced to compensate.
         exponent2 -= 23;
 
-        match base2_to_decimal(bits, exponent2, negative, false) {
+        match base2_to_decimal::<false>(bits, exponent2, negative) {
             Some(dec) => Ok(dec),
             None => Err(DecimalConvertError::Overflow),
         }
@@ -217,7 +217,7 @@ impl TryFrom<f64> for Decimal {
         // left the mantissa 52 bits. The exponent is reduced to compensate.
         exponent2 -= 52;
 
-        match base2_to_decimal(bits, exponent2, negative, true) {
+        match base2_to_decimal::<true>(bits, exponent2, negative) {
             Some(dec) => Ok(dec),
             None => Err(DecimalConvertError::Overflow),
         }
@@ -226,7 +226,9 @@ impl TryFrom<f64> for Decimal {
 
 // Copied from rust-decimal and modified:
 // https://github.com/paupino/rust-decimal/blob/master/src/decimal.rs
-fn base2_to_decimal(bits: u128, exponent2: i32, negative: bool, is_f64: bool) -> Option<Decimal> {
+fn base2_to_decimal<const IS_F64: bool>(bits: u128, exponent2: i32, negative: bool) -> Option<Decimal> {
+    const F32_DP: u128 = 9_9999_9999_u128;
+    const F64_DP: u128 = 9_9999_9999_9999_9999_u128;
     // 2^exponent2 = (10^exponent2)/(5^exponent2)
     //             = (5^-exponent2)*(10^exponent2)
     let mut exponent5 = -exponent2;
@@ -320,26 +322,24 @@ fn base2_to_decimal(bits: u128, exponent2: i32, negative: bool, is_f64: bool) ->
     // This step is required in order to remove excess bits of precision from the
     // end of the bit representation, down to the precision guaranteed by the
     // floating point number
-    if is_f64 {
-        // Guaranteed to about 16 dp
-        while exponent10 < 0 && (bits & 0xFFFF_FFFF_FFFF_FFFF_FFF0_0000_0000_0000) != 0 {
-            let rem10 = bits % 10;
+    let mut rem10 = 0;
+    if IS_F64 {
+        // Guaranteed to about 17 dp
+        while exponent10 < 0 && bits > F64_DP {
+            rem10 = bits % 10;
             bits /= 10;
             exponent10 += 1;
-            if rem10 >= 5 {
-                bits += 1;
-            }
         }
     } else {
-        // Guaranteed to about 6 dp
-        while exponent10 < 0 && (bits & 0xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FF00_0000) != 0 {
-            let rem10 = bits % 10;
+        // Guaranteed to about 9 dp
+        while exponent10 < 0 && bits > F32_DP {
+            rem10 = bits % 10;
             bits /= 10;
             exponent10 += 1;
-            if rem10 >= 5 {
-                bits += 1;
-            }
         }
+    }
+    if rem10 >= 5 {
+        bits += 1;
     }
 
     // Remove multiples of 10 from the representation
@@ -719,24 +719,24 @@ mod tests {
         assert_try_from_overflow(std::f32::NEG_INFINITY);
         assert_try_from(0.0f32, "0");
         assert_try_from(-0.0f32, "0");
-        assert_try_from(0.000001f32, "0.000001");
-        assert_try_from(0.0000001f32, "0.0000001");
-        assert_try_from(0.555555f32, "0.555555");
-        assert_try_from(0.5555555f32, "0.5555555");
-        assert_try_from(0.999999f32, "0.999999");
-        assert_try_from(0.9999999f32, "0.9999999");
+        assert_try_from(0.000001f32, "0.000000999999997");
+        assert_try_from(0.0000001f32, "0.000000100000001");
+        assert_try_from(0.555555f32, "0.555554986");
+        assert_try_from(0.5555555f32, "0.555555522");
+        assert_try_from(0.999999f32, "0.999998987");
+        assert_try_from(0.9999999f32, "0.999999881");
         assert_try_from(1.0f32, "1");
-        assert_try_from(1.00001f32, "1.00001");
-        assert_try_from(1.000001f32, "1.000001");
-        assert_try_from(1.555555f32, "1.555555");
-        assert_try_from(1.5555555f32, "1.5555555");
-        assert_try_from(1.99999f32, "1.99999");
-        assert_try_from(1.999999f32, "1.999999");
-        assert_try_from(1e-6f32, "0.000001");
-        assert_try_from(1e-10f32, "0.0000000001");
+        assert_try_from(1.00001f32, "1.00001001");
+        assert_try_from(1.000001f32, "1.00000095");
+        assert_try_from(1.555555f32, "1.55555499");
+        assert_try_from(1.5555555f32, "1.55555546");
+        assert_try_from(1.99999f32, "1.99998999");
+        assert_try_from(1.999999f32, "1.99999905");
+        assert_try_from(1e-6f32, "0.000000999999997");
+        assert_try_from(1e-10f32, "0.000000000100000001");
         assert_try_from(1.23456789e10f32, "12345678848");
-        assert_try_from(1.23456789e-10f32, "0.00000000012345679");
-        assert_try_from(std::f32::consts::PI, "3.141593");
+        assert_try_from(1.23456789e-10f32, "0.000000000123456786");
+        assert_try_from(std::f32::consts::PI, "3.14159274");
     }
 
     #[test]
@@ -746,24 +746,24 @@ mod tests {
         assert_try_from_overflow(std::f64::NEG_INFINITY);
         assert_try_from(0.0f64, "0");
         assert_try_from(-0.0f64, "0");
-        assert_try_from(0.000000000000001f64, "0.000000000000001");
-        assert_try_from(0.0000000000000001f64, "0.0000000000000001");
-        assert_try_from(0.555555555555555f64, "0.555555555555555");
-        assert_try_from(0.5555555555555556f64, "0.555555555555556");
+        assert_try_from(0.000000000000001f64, "0.0000000000000010000000000000001");
+        assert_try_from(0.0000000000000001f64, "0.000000000000000099999999999999998");
+        assert_try_from(0.555555555555555f64, "0.55555555555555503");
+        assert_try_from(0.5555555555555556f64, "0.55555555555555558");
         assert_try_from(0.999999999999999f64, "0.999999999999999");
-        assert_try_from(0.9999999999999999f64, "1");
+        assert_try_from(0.9999999999999999f64, "0.99999999999999989");
         assert_try_from(1.0f64, "1");
         assert_try_from(1.00000000000001f64, "1.00000000000001");
-        assert_try_from(1.000000000000001f64, "1.000000000000001"); //
+        assert_try_from(1.000000000000001f64, "1.0000000000000011"); //
         assert_try_from(1.55555555555555f64, "1.55555555555555");
         assert_try_from(1.555555555555556f64, "1.555555555555556"); //
         assert_try_from(1.99999999999999f64, "1.99999999999999");
-        assert_try_from(1.999999999999999f64, "1.999999999999999"); //
-        assert_try_from(1e-6f64, "0.000001");
-        assert_try_from(1e-20f64, "0.00000000000000000001");
+        assert_try_from(1.999999999999999f64, "1.9999999999999989"); //
+        assert_try_from(1e-6f64, "0.00000099999999999999995");
+        assert_try_from(1e-20f64, "0.0000000000000000000099999999999999995");
         assert_try_from(1.234567890123456789e20f64, "123456789012345683968");
-        assert_try_from(1.234567890123456789e-20f64, "0.00000000000000000001234567890123457");
-        assert_try_from(std::f64::consts::PI, "3.141592653589793");
+        assert_try_from(1.234567890123456789e-20f64, "0.000000000000000000012345678901234569");
+        assert_try_from(std::f64::consts::PI, "3.1415926535897931");
     }
 
     fn assert_into<S: AsRef<str>, T: From<Decimal> + PartialEq + Debug>(s: S, expected: T) {
