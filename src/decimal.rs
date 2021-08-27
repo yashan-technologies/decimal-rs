@@ -17,6 +17,7 @@
 use crate::convert::MAX_I128_REPR;
 use crate::error::DecimalConvertError;
 use crate::u256::{POWERS_10, ROUNDINGS, U256};
+use stack_buf::StackVec;
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -146,6 +147,11 @@ impl Decimal {
 
     #[inline]
     pub(crate) fn fmt_internal(&self, append_sign: bool, precision: Option<usize>, buf: &mut Buf) {
+        if self.is_zero() {
+            buf.push(b'0');
+            return;
+        }
+
         let dec = if let Some(prec) = precision {
             self.round(prec as i16)
         } else {
@@ -166,7 +172,7 @@ impl Decimal {
                 buf.push_elem(b'0', prec);
             }
         } else {
-            let mut int_buf = Buf::new();
+            let mut int_buf = StackVec::<u8, 40>::new();
             write!(&mut int_buf, "{}", dec.int_val).expect("failed to format int_val");
             let int = int_buf.as_slice();
 
@@ -179,9 +185,9 @@ impl Decimal {
                 let (before, after) = int.split_at(len - scale as usize);
 
                 buf.copy_from_slice(before);
-                buf.push(b'.');
 
                 if let Some(prec) = precision {
+                    buf.push(b'.');
                     let after_len = after.len();
                     if prec > after_len {
                         buf.copy_from_slice(after);
@@ -190,22 +196,11 @@ impl Decimal {
                         buf.copy_from_slice(&after[0..prec]);
                     }
                 } else {
-                    buf.copy_from_slice(after);
-
-                    let s = buf.as_slice();
-                    let mut len = s.len();
-                    while len > 1 {
-                        let ch = s[len - 1];
-                        if ch == b'0' {
-                            len -= 1;
-                        } else {
-                            if ch == b'.' {
-                                len -= 1;
-                            }
-                            break;
-                        }
+                    let zero_num = after.iter().rev().take_while(|ch| **ch == b'0').count();
+                    if zero_num < after.len() {
+                        buf.push(b'.');
+                        buf.copy_from_slice(&after[0..after.len() - zero_num]);
                     }
-                    buf.truncate(len);
                 }
             }
         }
