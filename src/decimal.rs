@@ -244,6 +244,34 @@ impl Decimal {
         unsafe { Decimal::from_parts_unchecked(int, scale, negative) }
     }
 
+    /// Computes the smallest integer that is greater than or equal to `self`.
+    #[inline]
+    pub fn ceil(&self) -> Decimal {
+        if self.scale <= 0 {
+            return *self;
+        }
+
+        if self.negative {
+            self.trunc(0)
+        } else {
+            self.trunc(0) + 1
+        }
+    }
+
+    /// Computes the largest integer that is equal to or less than `self`.
+    #[inline]
+    pub fn floor(&self) -> Decimal {
+        if self.scale <= 0 {
+            return *self;
+        }
+
+        if self.negative {
+            self.trunc(0) - 1
+        } else {
+            self.trunc(0)
+        }
+    }
+
     /// Truncate a value to have `scale` digits after the decimal point.
     /// We allow negative `scale`, implying a truncation before the decimal
     /// point.
@@ -1407,6 +1435,31 @@ mod tests {
         assert_sqrt("1.01e100", "1.0049875621120890270219264912759576187e50");
         assert_sqrt("1e-100", "1e-50");
         assert_sqrt("1.01e-100", "1.0049875621120890270219264912759576187e-50");
+    }
+
+    #[test]
+    fn test_ceil_floor() {
+        fn assert_ceil_floor(val: &str, expected_ceil: &str, expected_floor: &str) {
+            let decimal_ceil = val.parse::<Decimal>().unwrap().ceil();
+            let decimal_floor = val.parse::<Decimal>().unwrap().floor();
+            let expected_ceil = expected_ceil.parse::<Decimal>().unwrap();
+            let expected_floor = expected_floor.parse::<Decimal>().unwrap();
+            assert_eq!(decimal_ceil, expected_ceil);
+            assert_eq!(decimal_floor, expected_floor);
+        }
+
+        assert_ceil_floor("0", "0", "0");
+        assert_ceil_floor("123456", "123456", "123456");
+        assert_ceil_floor("12345600", "12345600", "12345600");
+        assert_ceil_floor("-12345600", "-12345600", "-12345600");
+        assert_ceil_floor("123456.123456", "123457", "123456");
+        assert_ceil_floor("-123456.123456", "-123456", "-123457");
+        assert_ceil_floor("0.00123456", "1", "0");
+        assert_ceil_floor("-0.00123456", "0", "-1");
+        assert_ceil_floor("1e100", "1e100", "1e100");
+        assert_ceil_floor("1e-100", "1", "0");
+        assert_ceil_floor("-1e100", "-1e100", "-1e100");
+        assert_ceil_floor("-1e-100", "0", "-1");
     }
 
     #[test]
