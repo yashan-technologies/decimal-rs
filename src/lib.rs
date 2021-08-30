@@ -81,4 +81,4 @@ mod u256;
 mod serde;
 
 pub use crate::decimal::{Decimal, MAX_BINARY_SIZE, MAX_PRECISION};
-pub use crate::error::{DecimalConvertError, DecimalParseError};
+pub use crate::error::{DecimalConvertError, DecimalFormatError, DecimalParseError};

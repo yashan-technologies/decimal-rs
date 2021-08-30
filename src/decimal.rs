@@ -15,13 +15,13 @@
 //! Decimal implementation.
 
 use crate::convert::MAX_I128_REPR;
-use crate::error::DecimalConvertError;
+use crate::error::{DecimalConvertError, DecimalFormatError};
 use crate::u256::{POWERS_10, ROUNDINGS, U256};
 use stack_buf::StackVec;
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::io::Write;
+use std::io;
 
 /// Maximum precision of `Decimal`.
 pub const MAX_PRECISION: u32 = 38;
@@ -146,67 +146,6 @@ impl Decimal {
     }
 
     #[inline]
-    pub(crate) fn fmt_internal(&self, append_sign: bool, precision: Option<usize>, buf: &mut Buf) {
-        if self.is_zero() {
-            buf.push(b'0');
-            return;
-        }
-
-        let dec = if let Some(prec) = precision {
-            self.round(prec as i16)
-        } else {
-            *self
-        };
-
-        let scale = dec.scale();
-
-        if append_sign && self.is_sign_negative() {
-            buf.push(b'-');
-        }
-
-        if scale <= 0 {
-            write!(buf, "{}", dec.int_val).expect("failed to format int_val");
-            buf.push_elem(b'0', -scale as usize);
-            if let Some(prec) = precision {
-                buf.push(b'.');
-                buf.push_elem(b'0', prec);
-            }
-        } else {
-            let mut int_buf = StackVec::<u8, 40>::new();
-            write!(&mut int_buf, "{}", dec.int_val).expect("failed to format int_val");
-            let int = int_buf.as_slice();
-
-            let len = int.len();
-            if len <= scale as usize {
-                buf.copy_from_slice(&[b'0', b'.']);
-                buf.push_elem(b'0', scale as usize - len);
-                buf.copy_from_slice(int);
-            } else {
-                let (before, after) = int.split_at(len - scale as usize);
-
-                buf.copy_from_slice(before);
-
-                if let Some(prec) = precision {
-                    buf.push(b'.');
-                    let after_len = after.len();
-                    if prec > after_len {
-                        buf.copy_from_slice(after);
-                        buf.push_elem(b'0', prec - after_len);
-                    } else {
-                        buf.copy_from_slice(&after[0..prec]);
-                    }
-                } else {
-                    let zero_num = after.iter().rev().take_while(|ch| **ch == b'0').count();
-                    if zero_num < after.len() {
-                        buf.push(b'.');
-                        buf.copy_from_slice(&after[0..after.len() - zero_num]);
-                    }
-                }
-            }
-        }
-    }
-
-    #[inline]
     fn encode_header(&self) -> [u8; 2] {
         let sign = if self.is_sign_negative() { 1 } else { 0 };
 
@@ -223,7 +162,7 @@ impl Decimal {
 
     /// Encodes `self` to `writer` as binary bytes.
     /// Returns total size on success, which is not larger than [`MAX_BINARY_SIZE`].
-    fn internal_encode<W: Write, const COMPACT: bool>(&self, mut writer: W) -> std::io::Result<usize> {
+    fn internal_encode<W: io::Write, const COMPACT: bool>(&self, mut writer: W) -> std::io::Result<usize> {
         let int_bytes: [u8; 16] = self.int_val.to_le_bytes();
 
         let mut id = 15;
@@ -254,7 +193,7 @@ impl Decimal {
     /// Encodes `self` to `writer` as binary bytes.
     /// Returns total size on success, which is not larger than [`MAX_BINARY_SIZE`].
     #[inline]
-    pub fn encode<W: Write>(&self, writer: W) -> std::io::Result<usize> {
+    pub fn encode<W: io::Write>(&self, writer: W) -> std::io::Result<usize> {
         self.internal_encode::<_, false>(writer)
     }
 
@@ -264,7 +203,7 @@ impl Decimal {
     /// The only different from [`Decimal::encode`] is it will compact encoded bytes
     /// when `self` is zero or small positive integer.
     #[inline]
-    pub fn compact_encode<W: Write>(&self, writer: W) -> std::io::Result<usize> {
+    pub fn compact_encode<W: io::Write>(&self, writer: W) -> std::io::Result<usize> {
         self.internal_encode::<_, true>(writer)
     }
 
@@ -749,13 +688,245 @@ impl Decimal {
 
         Some(result)
     }
+
+    #[inline]
+    pub(crate) fn fmt_internal<W: fmt::Write>(
+        &self,
+        append_sign: bool,
+        omit_integer_zero: bool,
+        precision: Option<usize>,
+        mut w: W,
+    ) -> Result<(), DecimalFormatError> {
+        use std::fmt::Write;
+
+        const ZERO_BUF: [u8; 256] = [b'0'; 256];
+
+        if self.is_zero() {
+            w.write_byte(b'0')?;
+            return Ok(());
+        }
+
+        let dec = if let Some(prec) = precision {
+            self.round(prec as i16)
+        } else {
+            *self
+        };
+
+        let scale = dec.scale();
+
+        if append_sign && self.is_sign_negative() {
+            w.write_byte(b'-')?;
+        }
+
+        if scale <= 0 {
+            write!(w, "{}", dec.int_val)?;
+            w.write_bytes(&ZERO_BUF[..-scale as usize])?;
+            if let Some(prec) = precision {
+                if prec != 0 {
+                    w.write_byte(b'.')?;
+                    w.write_bytes(&ZERO_BUF[..prec])?;
+                }
+            }
+        } else {
+            let mut buf = StackVec::<u8, 40>::new();
+            write!(&mut buf, "{}", dec.int_val)?;
+            let digits = buf.as_slice();
+
+            let len = digits.len();
+            if len <= scale as usize {
+                if !omit_integer_zero {
+                    w.write_byte(b'0')?;
+                }
+                w.write_byte(b'.')?;
+                w.write_bytes(&ZERO_BUF[..scale as usize - len])?;
+                w.write_bytes(digits)?;
+            } else {
+                let (int_digits, frac_digits) = digits.split_at(len - scale as usize);
+                w.write_bytes(int_digits)?;
+                if let Some(prec) = precision {
+                    w.write_byte(b'.')?;
+                    let after_len = frac_digits.len();
+                    if prec > after_len {
+                        w.write_bytes(frac_digits)?;
+                        w.write_bytes(&ZERO_BUF[..prec - after_len])?;
+                    } else {
+                        w.write_bytes(&frac_digits[0..prec])?;
+                    }
+                } else {
+                    let zero_num = frac_digits.iter().rev().take_while(|ch| **ch == b'0').count();
+                    if zero_num < frac_digits.len() {
+                        w.write_byte(b'.')?;
+                        w.write_bytes(&frac_digits[0..frac_digits.len() - zero_num])?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    fn fmt_sci_internal<W: fmt::Write, const POSITIVE_EXP: bool>(
+        &self,
+        expect_scale: i16,
+        mut exp: u16,
+        mut w: W,
+    ) -> Result<(), DecimalFormatError> {
+        if expect_scale >= 1 {
+            // Creates number part
+            let temp_scale = if POSITIVE_EXP {
+                expect_scale - exp as i16
+            } else {
+                expect_scale + exp as i16
+            };
+
+            let mut dec = self.round(temp_scale);
+
+            // Whether number carries or not
+            if dec.precision() > self.trunc(temp_scale).precision() {
+                if POSITIVE_EXP {
+                    exp += 1
+                } else {
+                    exp -= 1
+                }
+            }
+
+            // This decimal only includes scientific notation number part
+            if POSITIVE_EXP {
+                dec.scale += exp as i16
+            } else {
+                dec.scale -= exp as i16
+            };
+
+            // Supplies zero to fill expect scale
+            dec.fmt_internal(true, true, Some(expect_scale as usize), &mut w)?;
+
+            if POSITIVE_EXP {
+                write_exp(b"E+", exp, w)?;
+            } else {
+                write_exp(b"E-", exp, w)?;
+            }
+        } else {
+            return Err(DecimalFormatError::OutOfRange);
+        }
+
+        Ok(())
+    }
+
+    /// Formats the decimal, using scientific notation depending on the width.
+    #[inline]
+    pub fn format_with_sci<W: fmt::Write>(&self, max_width: u16, mut w: W) -> Result<(), DecimalFormatError> {
+        const DOT_LEN: u16 = 1; // the length of "."
+
+        if self.is_zero() {
+            w.write_byte(b'0')?;
+            return Ok(());
+        }
+
+        let precision = self.precision() as i16;
+        let sign_len = if self.negative { 1 } else { 0 };
+        // include ".", but without sign
+        let max_digits = max_width - sign_len;
+
+        let (use_sci, positive_exp, prec): (bool, bool, Option<usize>) = if self.scale < precision {
+            // integer part
+            let int_len = (precision - self.scale) as u16;
+            if max_digits >= int_len {
+                if max_digits == int_len {
+                    (false, true, Some(0))
+                } else {
+                    // length of the fractional part
+                    let scale = (max_digits as u16 - int_len - DOT_LEN) as usize;
+                    (false, true, Some(scale))
+                }
+            } else {
+                // use sci notation, with "E+"
+                (true, true, None)
+            }
+        } else if self.scale - precision >= 5 {
+            if max_digits < self.scale as u16 + DOT_LEN {
+                // use sci notation, with "E-"
+                (true, false, None)
+            } else {
+                (false, true, None)
+            }
+        } else {
+            // round the decimal
+            let scale = max_width as usize - 1;
+            (false, true, Some(scale))
+        };
+
+        if use_sci {
+            const E_NOTATION_LEN: usize = 2; // "E+" or "E-"
+            const SCI_INT_LEN: i16 = 2; // e.g. "1."
+
+            // Ignore the sign in exponent part
+            let exp = (precision - self.scale - 1).abs() as u16;
+            // 'E' + sign + exponent number
+            let exp_len = E_NOTATION_LEN + if exp < 100 { 2 } else { 3 };
+            // Remove integer and '.' in scientific notation
+            let expect_scale = max_digits as i16 - exp_len as i16 - SCI_INT_LEN;
+
+            if positive_exp {
+                self.fmt_sci_internal::<W, true>(expect_scale, exp, w)?;
+            } else {
+                self.fmt_sci_internal::<W, false>(expect_scale, exp, w)?;
+            }
+        } else {
+            self.fmt_internal(true, true, prec, w)?;
+        }
+
+        Ok(())
+    }
+}
+
+trait WriteExt: fmt::Write {
+    #[inline(always)]
+    fn write_byte(&mut self, byte: u8) -> fmt::Result {
+        self.write_bytes(&[byte])
+    }
+
+    #[inline(always)]
+    fn write_bytes(&mut self, bytes: &[u8]) -> fmt::Result {
+        let s = unsafe { std::str::from_utf8_unchecked(bytes) };
+        self.write_str(s)
+    }
+}
+
+impl<W: fmt::Write> WriteExt for W {}
+
+#[inline]
+fn write_exp<W: fmt::Write>(e_notation: &[u8], exp: u16, mut w: W) -> Result<(), DecimalFormatError> {
+    w.write_bytes(e_notation)?;
+
+    // Creates a temp array to save exp str
+    let mut buf = [b'0'; 3];
+    let mut index = 2;
+
+    let mut val = exp;
+    while val >= 10 {
+        let v = val % 10;
+        val /= 10;
+        buf[index] += v as u8;
+        index -= 1;
+    }
+    buf[index] += val as u8;
+
+    // Adds zero if exponent number doesn't have two digits
+    if index == 2 {
+        index -= 1;
+    }
+
+    w.write_bytes(&buf[index..])?;
+    Ok(())
 }
 
 impl fmt::Display for Decimal {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut buf = Buf::new();
-        self.fmt_internal(false, f.precision(), &mut buf);
+        self.fmt_internal(false, false, f.precision(), &mut buf)
+            .expect("failed to format decimal");
         let str = unsafe { std::str::from_utf8_unchecked(buf.as_slice()) };
         f.pad_integral(self.is_sign_positive(), "", str)
     }
@@ -879,7 +1050,7 @@ mod tests {
         ) {
             let dec = Decimal::from_parts(int_val, scale, negative).unwrap();
             let mut buf = Buf::new();
-            dec.fmt_internal(append_sign, precision, &mut buf);
+            dec.fmt_internal(append_sign, false, precision, &mut buf).unwrap();
             let str = unsafe { std::str::from_utf8_unchecked(buf.as_slice()) };
             assert_eq!(str, expected);
         }
@@ -1236,5 +1407,81 @@ mod tests {
         assert_sqrt("1.01e100", "1.0049875621120890270219264912759576187e50");
         assert_sqrt("1e-100", "1e-50");
         assert_sqrt("1.01e-100", "1.0049875621120890270219264912759576187e-50");
+    }
+
+    #[test]
+    fn test_format_with_sci() {
+        fn assert_fmt(input: &str, target_len: u16, expected: &str) {
+            let mut s = String::with_capacity(256);
+            let num = input.parse::<Decimal>().unwrap();
+            num.format_with_sci(target_len, &mut s).unwrap();
+            assert_eq!(s.as_str(), expected);
+        }
+
+        fn assert_error(input: &str, target_len: u16) {
+            let mut s = String::with_capacity(256);
+            let num = input.parse::<Decimal>().unwrap();
+            assert!(num.format_with_sci(target_len, &mut s).is_err());
+        }
+
+        // Cannot truncates when target_len is smaller than scientific notation length
+        assert_fmt("0", 1, "0");
+        assert_fmt("6", 1, "6");
+        assert_error("10", 1);
+        assert_fmt("10", 2, "10");
+        assert_error("100", 2);
+        assert_fmt("100", 3, "100");
+
+        // Keeps zero ending
+        assert_fmt("1000000000", 10, "1000000000");
+        assert_fmt("-1000000000", 11, "-1000000000");
+        assert_fmt("1000000000", 9, "1.000E+09");
+        assert_fmt("-1000000000", 10, "-1.000E+09");
+        assert_fmt("1000000000", 7, "1.0E+09");
+        assert_fmt("-1000000000", 8, "-1.0E+09");
+        assert_error("1000000000", 6);
+        assert_error("-1000000000", 7);
+
+        // Rounds when truncate
+        assert_fmt("9999999999", 9, "1.000E+10");
+        assert_fmt("9999999999", 7, "1.0E+10");
+        assert_fmt("1899999999", 9, "1.900E+09");
+        assert_fmt("1899999999", 7, "1.9E+09");
+        assert_fmt("1989999999", 9, "1.990E+09");
+        assert_fmt("1989999999", 7, "2.0E+09");
+        assert_fmt("1999999999", 9, "2.000E+09");
+        assert_fmt("1999999999", 7, "2.0E+09");
+        assert_fmt("1666666666", 9, "1.667E+09");
+        assert_fmt("1666666666", 7, "1.7E+09");
+        assert_error("1666666666", 6);
+        assert_fmt("9999999999.999999999", 9, "1.000E+10");
+        assert_fmt("-9999999999.999999999", 9, "-1.00E+10");
+        assert_fmt("666666.666666", 10, "666666.667");
+        assert_fmt(".0000123456789", 10, ".000012346");
+        assert_fmt(".00000123456789", 10, "1.2346E-06");
+        assert_fmt(".00000999999999", 10, "1.0000E-05");
+        assert_fmt("-0.00000999999999", 10, "-1.000E-05");
+        assert_fmt("-0.0000000000123456789", 14, "-1.2345679E-11");
+        assert_fmt(".0000000000123456789", 14, "1.23456789E-11");
+        assert_fmt("-0.0000000000123456789", 20, "-1.2345678900000E-11");
+
+        // Ignores zero integer
+        assert_fmt("-0.0000000000123456789", 21, "-.0000000000123456789");
+        assert_fmt("0.135E-100", 8, "1.4E-101");
+        assert_fmt("0.135E-100", 15, "1.35000000E-101");
+        assert_fmt("0.135E-100", 25, "1.350000000000000000E-101");
+        assert_fmt("0.135E-100", 30, "1.35000000000000000000000E-101");
+        assert_fmt("-0.135E+100", 25, "-1.350000000000000000E+99");
+        assert_fmt("-0.135E+100", 30, "-1.35000000000000000000000E+99");
+        assert_fmt(
+            "0.1E-126",
+            127,
+            "1.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000E-127",
+        );
+
+        // Ignores ending '.' after integer
+        assert_fmt("666666.666666", 7, "666667");
+        assert_fmt("666666.666666", 6, "666667");
+        assert_error("666666.666666", 5);
     }
 }

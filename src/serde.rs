@@ -14,8 +14,7 @@
 
 //! serde implementation.
 
-use crate::decimal::Buf;
-use crate::Decimal;
+use crate::decimal::{Buf, Decimal};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl serde::Serialize for Decimal {

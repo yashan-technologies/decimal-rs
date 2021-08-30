@@ -178,6 +178,65 @@ fn decimal_sqrt(bench: &mut Bencher) {
     })
 }
 
+fn decimal_sci_zero(bench: &mut Bencher) {
+    let x = parse("0.0");
+    let mut s = String::with_capacity(100);
+    bench.iter(|| {
+        s.clear();
+        // "0"
+        let _n = black_box(&x).format_with_sci(1, &mut s);
+    })
+}
+
+fn decimal_sci_normal(bench: &mut Bencher) {
+    let x = parse("1000");
+    let mut s = String::with_capacity(100);
+    bench.iter(|| {
+        s.clear();
+        // "1000"
+        let _n = black_box(&x).format_with_sci(4, &mut s);
+    })
+}
+
+fn decimal_sci_normal_round(bench: &mut Bencher) {
+    let x = parse(".0000123456789");
+    let mut s = String::with_capacity(100);
+    bench.iter(|| {
+        s.clear();
+        // ".000012346"
+        let _n = black_box(&x).format_with_sci(10, &mut s);
+    })
+}
+
+fn decimal_sci_int(bench: &mut Bencher) {
+    let x = parse("1234567890.123456789");
+    let mut s = String::with_capacity(100);
+    bench.iter(|| {
+        s.clear();
+        // "1.2E+09"
+        let _n = black_box(&x).format_with_sci(7, &mut s);
+    })
+}
+
+fn decimal_sci_fraction(bench: &mut Bencher) {
+    let x = parse(".00000000123456789");
+    let mut s = String::with_capacity(100);
+    bench.iter(|| {
+        s.clear();
+        // "1.2E-09"
+        let _n = black_box(&x).format_with_sci(7, &mut s);
+    })
+}
+
+fn decimal_sci_supply_zero(bench: &mut Bencher) {
+    let x = parse("0.1E-126");
+    let mut s = String::with_capacity(100);
+    bench.iter(|| {
+        s.clear();
+        let _n = black_box(&x).format_with_sci(127, &mut s);
+    })
+}
+
 benchmark_group!(
     decimal_benches,
     decimal_parse,
@@ -197,6 +256,12 @@ benchmark_group!(
     decimal_hash,
     decimal_cmp,
     decimal_sqrt,
+    decimal_sci_zero,
+    decimal_sci_normal,
+    decimal_sci_normal_round,
+    decimal_sci_int,
+    decimal_sci_fraction,
+    decimal_sci_supply_zero,
 );
 
 benchmark_main!(decimal_benches);

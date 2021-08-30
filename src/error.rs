@@ -42,6 +42,17 @@ pub enum DecimalConvertError {
     Overflow,
 }
 
+/// An error which can be returned when format decimal to string.
+#[derive(Clone, Debug, Eq, PartialEq, Error)]
+pub enum DecimalFormatError {
+    /// std::fmt::Error
+    #[error("{0}")]
+    Format(std::fmt::Error),
+    /// Decimal is out of range.
+    #[error("Data value out of range")]
+    OutOfRange,
+}
+
 impl From<DecimalParseError> for DecimalConvertError {
     #[inline]
     fn from(e: DecimalParseError) -> Self {
@@ -56,5 +67,12 @@ impl From<ParseFloatError> for DecimalConvertError {
     #[inline]
     fn from(_: ParseFloatError) -> Self {
         DecimalConvertError::Invalid
+    }
+}
+
+impl From<std::fmt::Error> for DecimalFormatError {
+    #[inline]
+    fn from(e: std::fmt::Error) -> Self {
+        DecimalFormatError::Format(e)
     }
 }
