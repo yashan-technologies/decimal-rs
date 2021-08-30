@@ -404,8 +404,9 @@ impl From<&Decimal> for f64 {
             v
         } else {
             let mut buf = Buf::new();
-            val.fmt_internal(true, None, &mut buf);
-            let str = unsafe { std::str::from_utf8_unchecked(buf.as_slice()) };
+            val.fmt_internal(true, false, None, &mut buf)
+                .expect("failed to format decimal");
+            let str = unsafe { std::str::from_utf8_unchecked(&*buf) };
             fast_float::parse(str).unwrap()
         }
     }
