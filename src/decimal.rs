@@ -865,7 +865,11 @@ impl Decimal {
                 } else {
                     // length of the fractional part
                     let scale = (max_digits as u16 - int_len - DOT_LEN) as usize;
-                    (false, true, Some(scale))
+                    if scale as i16 >= self.scale() {
+                        (false, true, None)
+                    } else {
+                        (false, true, Some(scale))
+                    }
                 }
             } else {
                 // use sci notation, with "E+"
@@ -1479,11 +1483,17 @@ mod tests {
 
         // Cannot truncates when target_len is smaller than scientific notation length
         assert_fmt("0", 1, "0");
+        assert_fmt("0", 5, "0");
         assert_fmt("6", 1, "6");
+        assert_fmt("6", 5, "6");
         assert_error("10", 1);
         assert_fmt("10", 2, "10");
+        assert_fmt("10", 5, "10");
         assert_error("100", 2);
         assert_fmt("100", 3, "100");
+        assert_fmt("100", 5, "100");
+        assert_fmt("-236.23", 20, "-236.23");
+        assert_fmt("-236.23", 7, "-236.23");
 
         // Keeps zero ending
         assert_fmt("1000000000", 10, "1000000000");
@@ -1507,6 +1517,7 @@ mod tests {
         assert_fmt("1666666666", 9, "1.667E+09");
         assert_fmt("1666666666", 7, "1.7E+09");
         assert_error("1666666666", 6);
+        assert_fmt("9999999999.999999999", 25, "9999999999.999999999");
         assert_fmt("9999999999.999999999", 9, "1.000E+10");
         assert_fmt("-9999999999.999999999", 9, "-1.00E+10");
         assert_fmt("666666.666666", 10, "666666.667");
@@ -1514,6 +1525,7 @@ mod tests {
         assert_fmt(".00000123456789", 10, "1.2346E-06");
         assert_fmt(".00000999999999", 10, "1.0000E-05");
         assert_fmt("-0.00000999999999", 10, "-1.000E-05");
+        assert_fmt("-0.00000999999999", 20, "-.00000999999999");
         assert_fmt("-0.0000000000123456789", 14, "-1.2345679E-11");
         assert_fmt(".0000000000123456789", 14, "1.23456789E-11");
         assert_fmt("-0.0000000000123456789", 20, "-1.2345678900000E-11");
@@ -1526,6 +1538,11 @@ mod tests {
         assert_fmt("0.135E-100", 30, "1.35000000000000000000000E-101");
         assert_fmt("-0.135E+100", 25, "-1.350000000000000000E+99");
         assert_fmt("-0.135E+100", 30, "-1.35000000000000000000000E+99");
+        assert_fmt(
+            "-0.135E-100",
+            106,
+            "-.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000135",
+        );
         assert_fmt(
             "0.1E-126",
             127,
