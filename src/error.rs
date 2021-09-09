@@ -29,6 +29,9 @@ pub enum DecimalParseError {
     /// Decimal is overflowed.
     #[error("numeric overflow")]
     Overflow,
+    /// Decimal is underflow.
+    #[error("numeric underflow")]
+    Underflow,
 }
 
 /// An error which can be returned when a conversion between other type and decimal fails.
@@ -58,7 +61,7 @@ impl From<DecimalParseError> for DecimalConvertError {
     fn from(e: DecimalParseError) -> Self {
         match e {
             DecimalParseError::Empty | DecimalParseError::Invalid => DecimalConvertError::Invalid,
-            DecimalParseError::Overflow => DecimalConvertError::Overflow,
+            DecimalParseError::Overflow | DecimalParseError::Underflow => DecimalConvertError::Overflow,
         }
     }
 }

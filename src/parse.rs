@@ -66,7 +66,10 @@ fn extract_exponent(s: &[u8]) -> Result<(i16, &[u8]), DecimalParseError> {
     }
 
     if number.len() > 3 {
-        return Err(DecimalParseError::Overflow);
+        return match sign {
+            Sign::Positive => Err(DecimalParseError::Overflow),
+            Sign::Negative => Err(DecimalParseError::Underflow),
+        };
     }
 
     let exp = {
@@ -80,8 +83,12 @@ fn extract_exponent(s: &[u8]) -> Result<(i16, &[u8]), DecimalParseError> {
         }
     };
 
-    if exp > -MIN_SCALE || exp < -MAX_SCALE {
+    if exp > -MIN_SCALE {
         return Err(DecimalParseError::Overflow);
+    }
+
+    if exp < -MAX_SCALE {
+        return Err(DecimalParseError::Underflow);
     }
 
     Ok((exp, s))
@@ -297,6 +304,11 @@ mod tests {
         assert_eq!(result.unwrap_err(), DecimalParseError::Overflow);
     }
 
+    fn assert_parse_underflow<S: AsRef<str>>(s: S) {
+        let result = s.as_ref().parse::<Decimal>();
+        assert_eq!(result.unwrap_err(), DecimalParseError::Underflow);
+    }
+
     #[test]
     fn test_parse_error() {
         assert_parse_empty("");
@@ -320,8 +332,11 @@ mod tests {
         assert_parse_invalid("-1 e1");
         assert_parse_invalid("   x   ");
         assert_parse_overflow("1e1000");
+        assert_parse_overflow("1e100000");
         assert_parse_overflow("1e127");
-        assert_parse_overflow("1e-131");
+        assert_parse_underflow("1e-131");
+        assert_parse_underflow("1e-1000");
+        assert_parse_underflow("1e-100000");
     }
 
     fn assert_parse<S: AsRef<str>, V: AsRef<str>>(s: S, expected: V) {
