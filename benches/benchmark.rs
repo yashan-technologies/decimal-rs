@@ -237,6 +237,28 @@ fn decimal_sci_supply_zero(bench: &mut Bencher) {
     })
 }
 
+fn decimal_pow(bench: &mut Bencher) {
+    let x = parse("12.3456");
+    let y = parse("50.123456");
+    bench.iter(|| {
+        let _n = black_box(&x).checked_pow(&y);
+    })
+}
+
+fn decimal_ln(bench: &mut Bencher) {
+    let x = parse("1234567890123456.789123456");
+    bench.iter(|| {
+        let _n = black_box(&x).ln();
+    })
+}
+
+fn decimal_exp(bench: &mut Bencher) {
+    let x = parse("259.123456789");
+    bench.iter(|| {
+        let _n = black_box(&x).exp();
+    })
+}
+
 benchmark_group!(
     decimal_benches,
     decimal_parse,
@@ -262,6 +284,9 @@ benchmark_group!(
     decimal_sci_int,
     decimal_sci_fraction,
     decimal_sci_supply_zero,
+    decimal_pow,
+    decimal_ln,
+    decimal_exp,
 );
 
 benchmark_main!(decimal_benches);
