@@ -14,7 +14,7 @@
 
 //! Conversion between `Decimal` and primitive number types.
 
-use crate::decimal::{Buf, Decimal, MAX_PRECISION, MAX_SCALE};
+use crate::decimal::{Buf, Decimal, MAX_PRECISION, MAX_SCALE, MIN_SCALE};
 use crate::u256::POWERS_10;
 use crate::DecimalConvertError;
 use std::convert::TryFrom;
@@ -286,16 +286,19 @@ fn base2_to_decimal<const IS_F64: bool>(bits: u128, exponent2: i32, negative: bo
 
     // At this point, the mantissa has assimilated the exponent5, but
     // exponent10 might not be suitable for assignment. exponent10 must be
-    // in the range [-MAX_PRECISION..0], so the mantissa must be scaled up or
+    // in the range [-MAX_SCALE..-MIN_SCALE], so the mantissa must be scaled up or
     // down appropriately.
-    while exponent10 > 0 {
+    while exponent10 > -MIN_SCALE as i32 {
         // In order to bring exponent10 down to 0, the mantissa should be
         // multiplied by 10 to compensate. If the exponent10 is too big, this
         // will cause the mantissa to overflow.
         match bits.checked_mul(10) {
             Some(prod) => {
-                if prod > MAX_I128_REPR as u128 {
+                if prod <= MAX_I128_REPR as u128 {
+                    bits *= 10;
                     exponent10 -= 1;
+                } else {
+                    return None;
                 }
             }
             None => {
@@ -304,10 +307,10 @@ fn base2_to_decimal<const IS_F64: bool>(bits: u128, exponent2: i32, negative: bo
         }
     }
 
-    // In order to bring exponent up to -MAX_PRECISION, the mantissa should
+    // In order to bring exponent up to -MAX_SCALE, the mantissa should
     // be divided by 10 to compensate. If the exponent10 is too small, this
     // will cause the mantissa to underflow and become 0.
-    while exponent10 < -(MAX_PRECISION as i32) {
+    while exponent10 < -MAX_SCALE as i32 {
         let rem10 = bits % 10;
         bits /= 10;
         exponent10 += 1;
@@ -325,14 +328,14 @@ fn base2_to_decimal<const IS_F64: bool>(bits: u128, exponent2: i32, negative: bo
     let mut rem10 = 0;
     if IS_F64 {
         // Guaranteed to about 17 dp
-        while exponent10 < 0 && bits > F64_DP {
+        while exponent10 < -MIN_SCALE as i32 && bits > F64_DP {
             rem10 = bits % 10;
             bits /= 10;
             exponent10 += 1;
         }
     } else {
         // Guaranteed to about 9 dp
-        while exponent10 < 0 && bits > F32_DP {
+        while exponent10 < -MIN_SCALE as i32 && bits > F32_DP {
             rem10 = bits % 10;
             bits /= 10;
             exponent10 += 1;
@@ -343,7 +346,7 @@ fn base2_to_decimal<const IS_F64: bool>(bits: u128, exponent2: i32, negative: bo
     }
 
     // Remove multiples of 10 from the representation
-    while exponent10 < 0 {
+    while exponent10 < -MIN_SCALE as i32 {
         let remainder = bits % 10;
         if remainder == 0 {
             exponent10 += 1;
@@ -735,9 +738,11 @@ mod tests {
         assert_try_from(1.999999f32, "1.99999905");
         assert_try_from(1e-6f32, "0.000000999999997");
         assert_try_from(1e-10f32, "0.000000000100000001");
-        assert_try_from(1.23456789e10f32, "12345678848");
+        assert_try_from(1.23456789e10f32, "12345678800");
         assert_try_from(1.23456789e-10f32, "0.000000000123456786");
         assert_try_from(std::f32::consts::PI, "3.14159274");
+        assert_try_from(-1.401298E-45f32, "-140129846E-53");
+        assert_try_from(1.401298E-45f32, "140129846E-53");
     }
 
     #[test]
@@ -762,7 +767,7 @@ mod tests {
         assert_try_from(1.999999999999999f64, "1.9999999999999989"); //
         assert_try_from(1e-6f64, "0.00000099999999999999995");
         assert_try_from(1e-20f64, "0.0000000000000000000099999999999999995");
-        assert_try_from(1.234567890123456789e20f64, "123456789012345683968");
+        assert_try_from(1.234567890123456789e20f64, "123456789012345680000");
         assert_try_from(1.234567890123456789e-20f64, "0.000000000000000000012345678901234569");
         assert_try_from(std::f64::consts::PI, "3.1415926535897931");
     }
