@@ -83,14 +83,6 @@ fn extract_exponent(s: &[u8]) -> Result<(i16, &[u8]), DecimalParseError> {
         }
     };
 
-    if exp > -MIN_SCALE {
-        return Err(DecimalParseError::Overflow);
-    }
-
-    if exp < -MAX_SCALE {
-        return Err(DecimalParseError::Underflow);
-    }
-
     Ok((exp, s))
 }
 
@@ -199,12 +191,18 @@ fn parse_str(s: &[u8]) -> Result<(Decimal, &[u8]), DecimalParseError> {
     let mut integral = integral;
     let mut scale = -exp;
 
+    // normalized_exp is the exponent of a number with the format `0.{fractional}E{exponent}`, and the first digit of `fractional` is not 0.
+    // Suppose `a = 123.456e12`, convert `a` to the format above and get `0.123456e15`, then the normalized_exp of a is 15.
+    let mut normalized_exp = exp;
+
     let precision = if integral == b"0" {
         // fractional only
         let zero_count = fractional.iter().take_while(|i| **i == b'0').count();
+        normalized_exp -= zero_count as i16;
         (fractional.len() - zero_count) as u32
     } else {
         let int_len = integral.len() as u32;
+        normalized_exp += int_len as i16;
         if !fractional.is_empty() {
             int_len + fractional.len() as u32
         } else if int_len <= MAX_PRECISION {
@@ -229,23 +227,24 @@ fn parse_str(s: &[u8]) -> Result<(Decimal, &[u8]), DecimalParseError> {
         return Err(DecimalParseError::Overflow);
     }
 
-    scale += fractional.len() as i16;
-    if scale > MAX_SCALE || scale < MIN_SCALE {
+    if normalized_exp <= -MAX_SCALE {
+        return Err(DecimalParseError::Underflow);
+    }
+    if normalized_exp > -MIN_SCALE {
         return Err(DecimalParseError::Overflow);
     }
 
     let mut int = 0u128;
-
     for &i in integral {
         int = int * 10 + (i - b'0') as u128;
     }
-
     for &i in fractional {
         int = int * 10 + (i - b'0') as u128;
     }
 
     let negative = if int != 0 { sign == Sign::Negative } else { false };
 
+    scale += fractional.len() as i16;
     Ok((unsafe { Decimal::from_parts_unchecked(int, scale, negative) }, s))
 }
 
@@ -426,5 +425,14 @@ mod tests {
         assert_parse("-1e-10", "-0.0000000001");
         assert_parse("0000001.23456000e3", "1234.56");
         assert_parse("-0000001.23456000E-3", "-0.00123456");
+    }
+
+    #[test]
+    fn test_parse_boundary() {
+        assert_parse("100E-131", "0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100");
+        assert_parse("0.000012345E130", "123450000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+        assert_parse("4.94065645841247E-126", "0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000494065645841247");
+        assert_parse("1234.94065645841247E-126", "0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000123494065645841247");
+        assert_parse("12345678987654321999999E-132", "0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012345678987654321999999");
     }
 }

@@ -802,7 +802,7 @@ impl Decimal {
         let digits = int_val.count_digits();
         let s = scale as i32 - digits as i32;
 
-        if s > MAX_SCALE as i32 {
+        if s >= MAX_SCALE as i32 {
             return Some(Decimal::ZERO);
         }
 
@@ -2067,8 +2067,8 @@ mod tests {
         assert_trunc("9999.9", 1, "9999.9");
         assert_trunc("9999.9", -2, "9900");
         assert_trunc("9999.9", -4, "0");
-        assert_trunc("1e126", 0, "1e126");
-        assert_trunc("1e126", -126, "1e126");
+        assert_trunc("1e125", 0, "1e125");
+        assert_trunc("1e125", -125, "1e125");
         assert_trunc("1e-130", 0, "0");
     }
 
