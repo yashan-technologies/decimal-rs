@@ -321,7 +321,7 @@ impl U256 {
 
     #[inline(always)]
     pub fn mul128(left: u128, right: u128) -> U256 {
-        U256(ethnum::intrinsics::mulddi3(&left, &right))
+        U256(ethnum::intrinsics::umulddi3(&left, &right))
     }
 }
 

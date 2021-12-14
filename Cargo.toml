@@ -12,7 +12,7 @@ homepage = "https://github.com/cod-technologies/decimal-rs"
 documentation = "https://docs.rs/decimal-rs/"
 
 [dependencies]
-ethnum = "1.0.3"
+ethnum = "1.0.4"
 thiserror = "1.0.26"
 stack-buf = "0.1.6"
 fast-float = "0.2.0"
