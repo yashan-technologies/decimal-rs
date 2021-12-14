@@ -834,6 +834,12 @@ impl Decimal {
         let e = other.scale - self.scale;
         debug_assert!(e > 0);
         if e as u32 > MAX_PRECISION {
+            if self.is_zero() {
+                return Some(unsafe { Decimal::from_parts_unchecked(other.int_val, other.scale, negative) });
+            }
+            if other.is_zero() {
+                return Some(unsafe { Decimal::from_parts_unchecked(self.int_val, self.scale, negative) });
+            }
             if (e as usize) < POWERS_10.len() {
                 if let Some(self_int_val) = POWERS_10[e as usize].checked_mul(self.int_val) {
                     if let Some(int_val) = self_int_val.checked_add(other.int_val) {

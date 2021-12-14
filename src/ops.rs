@@ -427,6 +427,10 @@ mod tests {
         );
         assert_add("1e-31", "1e-105", "1e-31");
         assert_add("1e76", "123456789", "1e76");
+        assert_add("0", "1e-127", "1e-127");
+        assert_add("0", "1e-90", "1e-90");
+        assert_add("0", "-1e-127", "-1e-127");
+        assert_add("0", "-1e-90", "-1e-90");
     }
 
     #[test]
