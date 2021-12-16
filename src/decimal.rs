@@ -1099,6 +1099,12 @@ impl Decimal {
         Some(result)
     }
 
+    /// Formats the decimal, including sign and omitting integer zero in fractional.
+    #[inline]
+    pub fn simply_format<W: fmt::Write>(&self, w: W) -> Result<(), DecimalFormatError> {
+        self.fmt_internal(true, true, None, w)
+    }
+
     #[inline]
     pub(crate) fn fmt_internal<W: fmt::Write>(
         &self,
@@ -2261,6 +2267,24 @@ mod tests {
         assert_ceil_floor("1e-100", "1", "0");
         assert_ceil_floor("-1e100", "-1e100", "-1e100");
         assert_ceil_floor("-1e-100", "0", "-1");
+    }
+
+    #[test]
+    fn test_simply_format() {
+        fn assert_fmt(input: &str, expected: &str) {
+            let mut s = String::with_capacity(256);
+            let num = input.parse::<Decimal>().unwrap();
+            num.simply_format(&mut s).unwrap();
+            assert_eq!(s.as_str(), expected);
+        }
+
+        assert_fmt("0", "0");
+        assert_fmt("0.6796000", ".6796");
+        assert_fmt("0.6796", ".6796");
+        assert_fmt("-0.6796", "-.6796");
+        assert_fmt("123456789.123456789", "123456789.123456789");
+        assert_fmt("+123456789.123456789", "123456789.123456789");
+        assert_fmt("-123456789.123456789", "-123456789.123456789");
     }
 
     #[test]
