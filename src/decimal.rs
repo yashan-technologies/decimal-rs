@@ -469,7 +469,7 @@ impl Decimal {
             return Err(DecimalConvertError::Overflow);
         }
 
-        if scale > MAX_SCALE || scale < MIN_SCALE {
+        if scale >= MAX_SCALE + MAX_PRECISION as i16 || scale < MIN_SCALE {
             return Err(DecimalConvertError::Overflow);
         }
 
@@ -655,7 +655,7 @@ impl Decimal {
     pub fn trunc(&self, scale: i16) -> Decimal {
         // Limit the scale value to avoid possible overflow in calculations
         let real_scale = if !self.is_zero() {
-            scale.max(MIN_SCALE).min(MAX_SCALE)
+            scale.max(MIN_SCALE).min(MAX_SCALE + MAX_PRECISION as i16 - 1)
         } else {
             return Decimal::ZERO;
         };
@@ -682,7 +682,7 @@ impl Decimal {
     pub fn round(&self, scale: i16) -> Decimal {
         // Limit the scale value to avoid possible overflow in calculations
         let real_scale = if !self.is_zero() {
-            scale.max(MIN_SCALE).min(MAX_SCALE)
+            scale.max(MIN_SCALE).min(MAX_SCALE + MAX_PRECISION as i16 - 1)
         } else {
             return Decimal::ZERO;
         };
@@ -2082,6 +2082,22 @@ mod tests {
         assert_trunc("1e125", 0, "1e125");
         assert_trunc("1e125", -125, "1e125");
         assert_trunc("1e-130", 0, "0");
+        assert_trunc("1.7976931348623279769313486232797693134E-130", 131, "1.7E-130");
+        assert_trunc(
+            "1.7976931348623279769313486232797693134E-130",
+            166,
+            "1.797693134862327976931348623279769313E-130",
+        );
+        assert_trunc(
+            "1.7976931348623279769313486232797693134E-130",
+            167,
+            "1.7976931348623279769313486232797693134E-130",
+        );
+        assert_trunc(
+            "1.7976931348623279769313486232797693134E-130",
+            168,
+            "1.7976931348623279769313486232797693134E-130",
+        );
     }
 
     #[test]
@@ -2109,6 +2125,22 @@ mod tests {
         assert_round("9999.9", 1, "9999.9");
         assert_round("9999.9", -2, "10000");
         assert_round("9999.9", -4, "10000");
+        assert_round("1.7976931348623279769313486232797693134E-130", 131, "1.8E-130");
+        assert_round(
+            "1.7976931348623279769313486232797693134E-130",
+            166,
+            "1.797693134862327976931348623279769313E-130",
+        );
+        assert_round(
+            "1.7976931348623279769313486232797693134E-130",
+            167,
+            "1.7976931348623279769313486232797693134E-130",
+        );
+        assert_round(
+            "1.7976931348623279769313486232797693134E-130",
+            168,
+            "1.7976931348623279769313486232797693134E-130",
+        );
     }
 
     #[test]
