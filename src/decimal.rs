@@ -1081,7 +1081,7 @@ impl Decimal {
             return Some(Decimal::ZERO);
         }
 
-        let mut result = self.checked_mul(Decimal::ZERO_POINT_FIVE)?;
+        let mut result = Decimal::ONE;
         let mut last = result;
 
         loop {
@@ -2274,6 +2274,7 @@ mod tests {
         assert_sqrt("1.01e100", "1.0049875621120890270219264912759576187e50");
         assert_sqrt("1e-100", "1e-50");
         assert_sqrt("1.01e-100", "1.0049875621120890270219264912759576187e-50");
+        assert_sqrt("1.0e-130", "1.0e-65");
     }
 
     #[test]
