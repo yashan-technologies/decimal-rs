@@ -722,6 +722,11 @@ impl Decimal {
             return true;
         }
 
+        if e <= -(self.precision() as i16) {
+            *self = Decimal::ZERO;
+            return false;
+        }
+
         // N * 10^E = N * 10^(E + S) * 10^ (-S)
         if e >= 0 {
             let ceil = POWERS_10[(precision as i16 - e) as usize].low();
@@ -2163,6 +2168,9 @@ mod tests {
         assert_overflow("123456", 5, 1);
         assert_overflow("123456", 6, 1);
         assert_overflow("123.456", 6, 4);
+        assert_overflow("5e100", 5, -2);
+        assert_overflow("5e100", 20, -80);
+
         assert("123456", 5, -1, "123460");
         assert("123456", 5, -5, "100000");
         assert("123456", 5, -6, "0");
@@ -2175,6 +2183,17 @@ mod tests {
         assert("123.456", 6, -2, "100");
         assert("123.456", 6, -3, "0");
         assert("123.456", 6, -4, "0");
+
+        assert("123.456", 5, -4, "0");
+        assert("123.456", 5, -3, "0");
+        assert("123.456", 5, -2, "100");
+        assert("123456", 5, -5, "100000");
+        assert("123456", 5, -6, "0");
+        assert("123456", 5, -7, "0");
+        assert("5e100", 21, -80, "5e100");
+        assert("5E-130", 10, 5, "0");
+        assert("5E-47", 1, 10, "0");
+        assert("-1E-130", 38, 10, "0");
     }
 
     #[test]
