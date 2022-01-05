@@ -722,7 +722,7 @@ impl Decimal {
             return true;
         }
 
-        if e <= -(self.precision() as i16) {
+        if e < -(self.precision() as i16) {
             *self = Decimal::ZERO;
             return false;
         }
@@ -2182,8 +2182,8 @@ mod tests {
         assert("123.456", 6, -1, "120");
         assert("123.456", 6, -2, "100");
         assert("123.456", 6, -3, "0");
+        assert("623.456", 6, -3, "1000");
         assert("123.456", 6, -4, "0");
-
         assert("123.456", 5, -4, "0");
         assert("123.456", 5, -3, "0");
         assert("123.456", 5, -2, "100");
@@ -2194,6 +2194,7 @@ mod tests {
         assert("5E-130", 10, 5, "0");
         assert("5E-47", 1, 10, "0");
         assert("-1E-130", 38, 10, "0");
+        assert("0.000811111", 5, 3, "0.001");
     }
 
     #[test]
