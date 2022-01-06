@@ -1034,32 +1034,17 @@ impl Decimal {
             let e = other.scale - self.scale;
             debug_assert!(e > 0);
 
-            if e as u32 > MAX_PRECISION {
-                let (self_int_val, scale) = if e as usize >= POWERS_10.len() {
-                    (
-                        POWERS_10[MAX_PRECISION as usize] * self.int_val,
-                        self.scale + MAX_PRECISION as i16,
-                    )
-                } else {
-                    (
-                        POWERS_10[(other.scale - self.scale) as usize] * self.int_val,
-                        other.scale,
-                    )
-                };
-
-                let (_int_val, rem) = self_int_val.div_rem(other.int_val);
-
-                return Some(Decimal {
-                    int_val: rem.low(),
-                    scale,
-                    negative: self.negative,
-                });
+            let mut res = *self;
+            loop {
+                let scale = (MAX_PRECISION as i16).min(other.scale - res.scale);
+                let res_val = U256::mul128(res.int_val, POWERS_10[scale as usize].low());
+                let rem = res_val % other.int_val;
+                res = unsafe { Decimal::from_parts_unchecked(rem.low(), res.scale + scale, res.negative) };
+                if res.scale == other.scale || res.is_zero() {
+                    break;
+                }
             }
-
-            let self_int_val = U256::mul128(self.int_val, POWERS_10[e as usize].low());
-            let rem = self_int_val % other.int_val;
-
-            Decimal::adjust_scale(rem, other.scale, self.negative)
+            Some(res)
         } else {
             let e = self.scale - other.scale;
             debug_assert!(e > 0);
@@ -1069,8 +1054,9 @@ impl Decimal {
 
             let other_int_val = U256::mul128(other.int_val, POWERS_10[e as usize].low());
             let rem = self.int_val % other_int_val;
+            debug_assert_eq!(rem.high(), 0);
 
-            Decimal::adjust_scale(rem, self.scale, self.negative)
+            Some(unsafe { Decimal::from_parts_unchecked(rem.low(), self.scale, self.negative) })
         }
     }
 
