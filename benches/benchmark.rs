@@ -237,6 +237,15 @@ fn decimal_sci_supply_zero(bench: &mut Bencher) {
     })
 }
 
+fn decimal_hex(bench: &mut Bencher) {
+    let x = parse("3534.33");
+    let mut s = String::with_capacity(64);
+    bench.iter(|| {
+        s.clear();
+        let _n = black_box(&x).format_to_hex(true, &mut s);
+    })
+}
+
 fn decimal_pow(bench: &mut Bencher) {
     let x = parse("12.3456");
     let y = parse("50.123456");
@@ -284,6 +293,7 @@ benchmark_group!(
     decimal_sci_int,
     decimal_sci_fraction,
     decimal_sci_supply_zero,
+    decimal_hex,
     decimal_pow,
     decimal_ln,
     decimal_exp,

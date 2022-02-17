@@ -1290,6 +1290,36 @@ impl Decimal {
         Ok(())
     }
 
+    /// Format decimal as a hexadecimal number.
+    ///
+    /// A maximum of 63 digits hexadecimal positive number are supported.
+    #[inline]
+    pub fn format_to_hex<W: fmt::Write>(&self, is_uppercase: bool, mut w: W) -> Result<(), DecimalFormatError> {
+        // Max number: u256::MAX/16 = 7237005577332262213973186563042994240829374041602535252466099000494570602495
+        const MAX_DECIMAL: Decimal =
+            unsafe { Decimal::from_parts_unchecked(72370055773322622139731865630429942408, -38, false) };
+
+        if self.is_sign_negative() || self > MAX_DECIMAL {
+            return Err(DecimalFormatError::OutOfRange);
+        }
+
+        let integer = self.round(0);
+        let real_num = POWERS_10[(-integer.scale) as usize] * integer.int_val;
+        if is_uppercase {
+            if real_num.high() != 0 {
+                write!(&mut w, "{:X}", real_num.high())?;
+            }
+            write!(&mut w, "{:X}", real_num.low())?;
+        } else {
+            if real_num.high() != 0 {
+                write!(&mut w, "{:x}", real_num.high())?;
+            }
+            write!(&mut w, "{:x}", real_num.low())?;
+        }
+
+        Ok(())
+    }
+
     /// Raise `self` to the power of `exponent`, where `self`
     /// is a decimal and `exponent` is an u64 integer,
     /// returning None if the result overflowed.
@@ -2574,5 +2604,88 @@ mod tests {
                 result.int_val, result.scale, result.negative,
             );
         }
+    }
+
+    #[test]
+    fn test_format_to_hex() {
+        fn assert_fmt_hex(input: &str, is_capital: bool, expect: &str) {
+            let mut s = String::new();
+            let num = input.parse::<Decimal>().unwrap();
+            num.format_to_hex(is_capital, &mut s).unwrap();
+            assert_eq!(s.as_str(), expect);
+        }
+
+        assert_fmt_hex("3", true, "3");
+        assert_fmt_hex("15", true, "F");
+        assert_fmt_hex("15", false, "f");
+        assert_fmt_hex(
+            "7e75",
+            true,
+            "f79dc0e8c518f31eb934b4522ad36a1d39f275c35e858000000000000000000"
+                .to_uppercase()
+                .as_str(),
+        );
+        assert_fmt_hex(
+            "7e75",
+            false,
+            "f79dc0e8c518f31eb934b4522ad36a1d39f275c35e858000000000000000000",
+        );
+        assert_fmt_hex(
+            "6e70",
+            true,
+            "8b18610932ab6b2906ea3dfeaa8da073a862d7e0d800000000000000000"
+                .to_uppercase()
+                .as_str(),
+        );
+        assert_fmt_hex(
+            "6e70",
+            false,
+            "8b18610932ab6b2906ea3dfeaa8da073a862d7e0d800000000000000000",
+        );
+        assert_fmt_hex("999", true, "3E7");
+        assert_fmt_hex("999", false, "3e7");
+        assert_fmt_hex(
+            "9.93879279687e53",
+            true,
+            "a6067cc8b3051f61f39c31e697c47c18e3c0000000000".to_uppercase().as_str(),
+        );
+        assert_fmt_hex(
+            "9.93879279687e53",
+            false,
+            "a6067cc8b3051f61f39c31e697c47c18e3c0000000000",
+        );
+        assert_fmt_hex(
+            "12345678901234567890123456789012345678e30",
+            true,
+            "753aaed77fe1aa5508b3e1db763b1a087e44a76fa433d81f80000000"
+                .to_uppercase()
+                .as_str(),
+        );
+        assert_fmt_hex(
+            "12345678901234567890123456789012345678e30",
+            false,
+            "753aaed77fe1aa5508b3e1db763b1a087e44a76fa433d81f80000000",
+        );
+        assert_fmt_hex("253.658", true, "FE");
+        assert_fmt_hex("253.658", false, "fe");
+        assert_fmt_hex("0", true, "0");
+        assert_fmt_hex("0", false, "0");
+        assert_fmt_hex("0.2", true, "0");
+        assert_fmt_hex("0.2", false, "0");
+        assert_fmt_hex("0.7", true, "1");
+        assert_fmt_hex("0.7", false, "1");
+        // Max value
+        assert_fmt_hex(
+            "72370055773322622139731865630429942408e38",
+            true,
+            "fffffffffffffffffffffffffffffffe9e6c3ef3908c56c58cab20000000000"
+                .to_uppercase()
+                .as_str(),
+        );
+        assert_fmt_hex(
+            "72370055773322622139731865630429942408e38",
+            false,
+            "fffffffffffffffffffffffffffffffe9e6c3ef3908c56c58cab20000000000",
+        );
     }
 }
