@@ -189,43 +189,48 @@ fn parse_str(s: &[u8]) -> Result<(Decimal, &[u8]), DecimalParseError> {
     ) = parse_decimal(s)?;
 
     let mut integral = integral;
+    let mut fractional = fractional;
     let mut scale = -exp;
+
+    let mut carry = false;
+    const MAX_PRECISION_USIZE: usize = MAX_PRECISION as usize;
 
     // normalized_exp is the exponent of a number with the format `0.{fractional}E{exponent}`, and the first digit of `fractional` is not 0.
     // Suppose `a = 123.456e12`, convert `a` to the format above and get `0.123456e15`, then the normalized_exp of a is 15.
     let mut normalized_exp = exp;
 
-    let precision = if integral == b"0" {
+    if integral == b"0" {
         // fractional only
         let zero_count = fractional.iter().take_while(|i| **i == b'0').count();
         normalized_exp -= zero_count as i16;
-        (fractional.len() - zero_count) as u32
+
+        let max_fractional_precision = MAX_PRECISION_USIZE + zero_count;
+        if fractional.len() > max_fractional_precision {
+            carry = fractional[max_fractional_precision] > b'4';
+            fractional = &fractional[0..max_fractional_precision];
+        }
+
+        debug_assert!(fractional.len() <= max_fractional_precision);
     } else {
-        let int_len = integral.len() as u32;
-        normalized_exp += int_len as i16;
-        if !fractional.is_empty() {
-            int_len + fractional.len() as u32
-        } else if int_len <= MAX_PRECISION {
-            // integral only
-            int_len
+        let int_len = integral.len() as i16;
+        normalized_exp += int_len;
+
+        if int_len > MAX_PRECISION_USIZE as i16 {
+            carry = integral[MAX_PRECISION_USIZE] > b'4';
+            scale -= int_len - MAX_PRECISION_USIZE as i16;
+
+            integral = &integral[0..MAX_PRECISION_USIZE];
+            fractional = &[];
         } else {
-            // integral only, but length is overflowed
-            // count trailing zero of integral
-            let zero_count = integral.iter().rev().take_while(|i| **i == b'0').count();
-            if zero_count == 0 {
-                int_len
-            } else {
-                let new_len = int_len as usize - zero_count;
-                integral = &integral[0..new_len];
-                scale -= zero_count as i16;
-                new_len as u32
+            let max_fractional_precision = MAX_PRECISION_USIZE - int_len as usize;
+            if fractional.len() > max_fractional_precision {
+                carry = fractional[max_fractional_precision] > b'4';
+                fractional = &fractional[0..max_fractional_precision];
             }
+
+            debug_assert!(fractional.len() <= max_fractional_precision);
         }
     };
-
-    if precision > MAX_PRECISION {
-        return Err(DecimalParseError::Overflow);
-    }
 
     if normalized_exp <= -MAX_SCALE {
         return Err(DecimalParseError::Underflow);
@@ -241,6 +246,7 @@ fn parse_str(s: &[u8]) -> Result<(Decimal, &[u8]), DecimalParseError> {
     for &i in fractional {
         int = int * 10 + (i - b'0') as u128;
     }
+    int += carry as u128;
 
     let negative = if int != 0 { sign == Sign::Negative } else { false };
 
@@ -434,5 +440,50 @@ mod tests {
         assert_parse("4.94065645841247E-126", "0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000494065645841247");
         assert_parse("1234.94065645841247E-126", "0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000123494065645841247");
         assert_parse("12345678987654321999999E-132", "0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012345678987654321999999");
+    }
+
+    #[test]
+    fn test_parse_over_precision_but_valid() {
+        // integer only
+        assert_parse(
+            "999999999999999999999999999999999999999",
+            "1000000000000000000000000000000000000000",
+        );
+        assert_parse(
+            "900719925474099290071992547409929007112123123123123",
+            "900719925474099290071992547409929007110000000000000",
+        );
+
+        // fractional only
+        assert_parse(
+            "0.123123123123123135555555555555555555555555555555",
+            "0.12312312312312313555555555555555555556",
+        );
+        assert_parse(
+            "0.0000000123123123123123135555555555555555555555555555555",
+            "0.000000012312312312312313555555555555555555556",
+        );
+        assert_parse(
+            "0.0000000123123123123123135555555555555515555555555555555",
+            "0.000000012312312312312313555555555555551555556",
+        );
+        assert_parse(
+            "0.0000000123123123123123135555555555555565555551555555555",
+            "0.000000012312312312312313555555555555556555555",
+        );
+
+        // integer over precision
+        assert_parse(
+            "1231231231231231231231231255555555555555555555.123",
+            "1231231231231231231231231255555555555600000000",
+        );
+
+        // integer + fractional over precision
+        assert_parse(
+            "123123.5555555555555555555555555555555555555555",
+            "123123.55555555555555555555555555555556",
+        );
+
+        assert_parse_overflow("90071992547409929007199254740992900711212312312312312312312312312311111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111");
     }
 }
