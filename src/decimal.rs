@@ -1173,13 +1173,13 @@ impl Decimal {
     }
 
     #[inline]
-    fn fmt_sci_internal<W: fmt::Write, const POSITIVE_EXP: bool>(
+    fn fmt_sci_internal<W: fmt::Write, const POSITIVE_EXP: bool, const MIN_SCALE: i16>(
         &self,
         expect_scale: i16,
         mut exp: u16,
         mut w: W,
     ) -> Result<(), DecimalFormatError> {
-        if expect_scale >= 1 {
+        if expect_scale >= MIN_SCALE {
             // Creates number part
             let temp_scale = if POSITIVE_EXP {
                 expect_scale - exp as i16
@@ -1278,15 +1278,55 @@ impl Decimal {
             // Remove integer and '.' in scientific notation
             let expect_scale = max_digits as i16 - exp_len as i16 - SCI_INT_LEN;
 
+            const MIN_SCALE: i16 = 1;
             if positive_exp {
-                self.fmt_sci_internal::<W, true>(expect_scale, exp, w)?;
+                self.fmt_sci_internal::<W, true, MIN_SCALE>(expect_scale, exp, w)?;
             } else {
-                self.fmt_sci_internal::<W, false>(expect_scale, exp, w)?;
+                self.fmt_sci_internal::<W, false, MIN_SCALE>(expect_scale, exp, w)?;
             }
         } else {
             self.fmt_internal(true, true, prec, w)?;
         }
 
+        Ok(())
+    }
+
+    /// Formats the decimal, forced using scientific notation depending on the scale.
+    ///
+    /// In particular, the scientific notation is also enforced for 0.  
+    /// When the decimal is 0 and expect_scale greater than 0, with_zero_before_dot determines whether there is a 0 before the decimal point.
+    #[inline]
+    pub fn format_with_sci_forced<W: fmt::Write>(
+        &self,
+        expect_scale: i16,
+        with_zero_before_dot: bool,
+        mut w: W,
+    ) -> Result<(), DecimalFormatError> {
+        // max_scale: 64(to_char max length) - 1(sign) - 1(.) -1(integer_count) - 5 = 56
+        const MAX_SCALE: usize = 56;
+        if expect_scale > MAX_SCALE as i16 {
+            return Err(DecimalFormatError::OutOfRange);
+        }
+        let precision = self.precision() as i16;
+        let exp = (precision - self.scale - 1).abs() as u16;
+        let positive_exp = precision > self.scale;
+
+        if self.is_zero() && expect_scale > 0 {
+            const ZERO_BUF: [u8; MAX_SCALE] = [b'0'; MAX_SCALE];
+            if with_zero_before_dot {
+                w.write_bytes(b"0.")?;
+            } else {
+                w.write_bytes(b" .")?;
+            }
+            w.write_bytes(&ZERO_BUF[..expect_scale as usize - 1])?;
+        }
+
+        const MIN_SCALE: i16 = 0;
+        if positive_exp {
+            self.fmt_sci_internal::<W, true, MIN_SCALE>(expect_scale, exp, w)?;
+        } else {
+            self.fmt_sci_internal::<W, false, MIN_SCALE>(expect_scale, exp, w)?;
+        }
         Ok(())
     }
 
@@ -2443,6 +2483,76 @@ mod tests {
         assert_fmt("666666.666666", 7, "666667");
         assert_fmt("666666.666666", 6, "666667");
         assert_error("666666.666666", 5);
+    }
+
+    #[test]
+    fn test_format_with_sci_forced() {
+        fn assert_sci(input: &str, expect_scale: i16, with_zero_before_dot: bool, expect: &str) {
+            let num = input.parse::<Decimal>().unwrap();
+            let mut s = String::new();
+            num.format_with_sci_forced(expect_scale, with_zero_before_dot, &mut s)
+                .unwrap();
+            assert_eq!(s.as_str(), expect);
+        }
+
+        assert_sci("0", 0, false, "0E+00");
+        assert_sci("0", 1, false, " .0E+00");
+        assert_sci("0", 3, false, " .000E+00");
+        assert_sci(
+            "0",
+            56,
+            false,
+            " .00000000000000000000000000000000000000000000000000000000E+00",
+        );
+        assert_sci("0", 0, true, "0E+00");
+        assert_sci("0", 1, true, "0.0E+00");
+        assert_sci("0", 3, true, "0.000E+00");
+        assert_sci(
+            "0",
+            56,
+            true,
+            "0.00000000000000000000000000000000000000000000000000000000E+00",
+        );
+        assert_sci("0.6", 0, false, "6E-01");
+        assert_sci("1.6", 0, false, "2E+00");
+        assert_sci("1.2", 0, false, "1E+00");
+        assert_sci(
+            "3.234234E120",
+            56,
+            false,
+            "3.23423400000000000000000000000000000000000000000000000000E+120",
+        );
+        assert_sci(
+            "3.234234E-120",
+            56,
+            false,
+            "3.23423400000000000000000000000000000000000000000000000000E-120",
+        );
+        assert_sci("3.234234E120", 3, false, "3.234E+120");
+        assert_sci("3.234234E-120", 3, false, "3.234E-120");
+        assert_sci(
+            "0.345e100",
+            56,
+            false,
+            "3.45000000000000000000000000000000000000000000000000000000E+99",
+        );
+        assert_sci(
+            "0.345e-100",
+            56,
+            false,
+            "3.45000000000000000000000000000000000000000000000000000000E-101",
+        );
+        assert_sci("3e2", 4, false, "3.0000E+02");
+        assert_sci("300", 4, false, "3.0000E+02");
+        assert_sci("0.03", 4, false, "3.0000E-02");
+        assert_sci("3.36e60", 0, false, "3E+60");
+        assert_sci("3.36e-60", 0, false, "3E-60");
+        assert_sci("-3.36e60", 0, false, "-3E+60");
+        assert_sci("-3.36e-60", 0, false, "-3E-60");
+        assert_sci("3.36e60", 1, false, "3.4E+60");
+        assert_sci("3.36e-60", 1, false, "3.4E-60");
+        assert_sci("-3.36e60", 1, false, "-3.4E+60");
+        assert_sci("-3.36e-60", 1, false, "-3.4E-60");
     }
 
     #[test]
