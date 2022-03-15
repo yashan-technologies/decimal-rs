@@ -410,7 +410,7 @@ impl From<&Decimal> for f64 {
             v
         } else {
             let mut buf = Buf::new();
-            val.fmt_internal(true, false, None, &mut buf)
+            val.fmt_internal(true, false, false, None, &mut buf)
                 .expect("failed to format decimal");
             let str = unsafe { std::str::from_utf8_unchecked(&*buf) };
             fast_float::parse(str).unwrap()

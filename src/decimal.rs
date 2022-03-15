@@ -1093,7 +1093,7 @@ impl Decimal {
     /// Formats the decimal, including sign and omitting integer zero in fractional.
     #[inline]
     pub fn simply_format<W: fmt::Write>(&self, w: W) -> Result<(), DecimalFormatError> {
-        self.fmt_internal(true, true, None, w)
+        self.fmt_internal(true, true, true, None, w)
     }
 
     #[inline]
@@ -1101,6 +1101,7 @@ impl Decimal {
         &self,
         append_sign: bool,
         omit_integer_zero: bool,
+        omit_frac_ending_zero: bool,
         precision: Option<usize>,
         mut w: W,
     ) -> Result<(), DecimalFormatError> {
@@ -1146,7 +1147,12 @@ impl Decimal {
                 }
                 w.write_byte(b'.')?;
                 w.write_bytes(&ZERO_BUF[..scale as usize - len])?;
-                w.write_bytes(digits)?;
+                if omit_frac_ending_zero {
+                    let zero_num = digits.iter().rev().take_while(|ch| **ch == b'0').count();
+                    w.write_bytes(&digits[0..len - zero_num])?;
+                } else {
+                    w.write_bytes(digits)?;
+                }
             } else {
                 let (int_digits, frac_digits) = digits.split_at(len - scale as usize);
                 w.write_bytes(int_digits)?;
@@ -1206,7 +1212,7 @@ impl Decimal {
             };
 
             // Supplies zero to fill expect scale
-            dec.fmt_internal(true, true, Some(expect_scale as usize), &mut w)?;
+            dec.fmt_internal(true, true, true, Some(expect_scale as usize), &mut w)?;
 
             if POSITIVE_EXP {
                 write_exp(b"E+", exp, w)?;
@@ -1285,7 +1291,7 @@ impl Decimal {
                 self.fmt_sci_internal::<W, false, MIN_SCALE>(expect_scale, exp, w)?;
             }
         } else {
-            self.fmt_internal(true, true, prec, w)?;
+            self.fmt_internal(true, true, true, prec, w)?;
         }
 
         Ok(())
@@ -1821,7 +1827,7 @@ impl fmt::Display for Decimal {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut buf = Buf::new();
-        self.fmt_internal(false, false, f.precision(), &mut buf)
+        self.fmt_internal(false, false, false, f.precision(), &mut buf)
             .expect("failed to format decimal");
         let str = unsafe { std::str::from_utf8_unchecked(buf.as_slice()) };
         f.pad_integral(self.is_sign_positive(), "", str)
@@ -1946,7 +1952,8 @@ mod tests {
         ) {
             let dec = Decimal::from_parts(int_val, scale, negative).unwrap();
             let mut buf = Buf::new();
-            dec.fmt_internal(append_sign, false, precision, &mut buf).unwrap();
+            dec.fmt_internal(append_sign, false, false, precision, &mut buf)
+                .unwrap();
             let str = unsafe { std::str::from_utf8_unchecked(buf.as_slice()) };
             assert_eq!(str, expected);
         }
@@ -1955,6 +1962,7 @@ mod tests {
         assert(128, -2, true, true, None, "-12800");
         assert(128, 4, true, true, None, "-0.0128");
         assert(128, 2, true, false, None, "1.28");
+        assert(1280, 4, true, true, None, "-0.1280");
         assert(12856, 4, true, false, None, "1.2856");
         assert(12856, 4, true, false, Some(2), "1.29");
         assert(12856, 4, true, false, Some(6), "1.285600");
@@ -2483,6 +2491,17 @@ mod tests {
         assert_fmt("666666.666666", 7, "666667");
         assert_fmt("666666.666666", 6, "666667");
         assert_error("666666.666666", 5);
+
+        // Ignores zeros after decimal's int_val in fraction
+        fn assert_fmt2(num: Decimal, target_len: u16, expected: &str) {
+            let mut s = String::with_capacity(256);
+            num.format_with_sci(target_len, &mut s).unwrap();
+            assert_eq!(s.as_str(), expected);
+        }
+
+        let num = Decimal::from_parts(330, 3, false).unwrap();
+        assert_fmt2(num, 10, ".33");
+        assert_fmt2(num, 2, ".3");
     }
 
     #[test]
