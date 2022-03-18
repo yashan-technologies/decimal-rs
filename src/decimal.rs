@@ -1215,9 +1215,9 @@ impl Decimal {
             dec.fmt_internal(true, true, true, Some(expect_scale as usize), &mut w)?;
 
             if POSITIVE_EXP {
-                write_exp(b"E+", exp, w)?;
+                write_exp(b"E+", exp, true, w)?;
             } else {
-                write_exp(b"E-", exp, w)?;
+                write_exp(b"E-", exp, true, w)?;
             }
         } else {
             return Err(DecimalFormatError::OutOfRange);
@@ -1362,6 +1362,52 @@ impl Decimal {
             }
             write!(&mut w, "{:x}", real_num.low())?;
         }
+
+        Ok(())
+    }
+
+    /// Formats the decimal in the json number format, using scientific notation depending on the width.
+    #[inline]
+    pub fn format_to_json<W: fmt::Write>(&self, mut w: W) -> Result<(), DecimalFormatError> {
+        if self.is_zero() {
+            w.write_byte(b'0')?;
+            return Ok(());
+        }
+
+        const MAX_WIDTH: i16 = 40;
+
+        let precision = self.precision() as i16;
+        let use_sci = if self.scale <= 0 {
+            precision - self.scale > MAX_WIDTH
+        } else {
+            let mut int_val = self.int_val;
+            let mut zero_count = 0;
+            while int_val != 0 {
+                if int_val % 10 != 0 {
+                    break;
+                }
+                zero_count += 1;
+                int_val /= 10;
+            }
+            self.scale - zero_count > MAX_WIDTH
+        };
+
+        if !use_sci {
+            return self.fmt_internal(true, false, true, None, w);
+        }
+
+        let mut dec = *self;
+        let positive_exp = precision > dec.scale;
+        let exp = (precision - dec.scale - 1).abs() as u16;
+        if positive_exp {
+            dec.scale += exp as i16;
+            dec.fmt_internal(true, false, true, None, &mut w)?;
+            write_exp(b"E+", exp, false, w)?;
+        } else {
+            dec.scale -= exp as i16;
+            dec.fmt_internal(true, false, true, None, &mut w)?;
+            write_exp(b"E-", exp, false, w)?;
+        };
 
         Ok(())
     }
@@ -1798,7 +1844,12 @@ trait WriteExt: fmt::Write {
 impl<W: fmt::Write> WriteExt for W {}
 
 #[inline]
-fn write_exp<W: fmt::Write>(e_notation: &[u8], exp: u16, mut w: W) -> Result<(), DecimalFormatError> {
+fn write_exp<W: fmt::Write>(
+    e_notation: &[u8],
+    exp: u16,
+    add_left_padding_zero: bool,
+    mut w: W,
+) -> Result<(), DecimalFormatError> {
     w.write_bytes(e_notation)?;
 
     // Creates a temp array to save exp str
@@ -1815,7 +1866,7 @@ fn write_exp<W: fmt::Write>(e_notation: &[u8], exp: u16, mut w: W) -> Result<(),
     buf[index] += val as u8;
 
     // Adds zero if exponent number doesn't have two digits
-    if index == 2 {
+    if index == 2 && add_left_padding_zero {
         index -= 1;
     }
 
@@ -2815,6 +2866,148 @@ mod tests {
             "72370055773322622139731865630429942408e38",
             false,
             "fffffffffffffffffffffffffffffffe9e6c3ef3908c56c58cab20000000000",
+        );
+    }
+
+    #[test]
+    fn test_format_to_json() {
+        fn assert_fmt_json(input: &str, expect: &str) {
+            let mut s = String::new();
+            let num = input.parse::<Decimal>().unwrap();
+            num.format_to_json(&mut s).unwrap();
+            assert_eq!(s.as_str(), expect);
+        }
+
+        assert_fmt_json("0", "0");
+        assert_fmt_json("123", "123");
+        assert_fmt_json("123.123", "123.123");
+        assert_fmt_json("-123", "-123");
+        assert_fmt_json("-123.123", "-123.123");
+        assert_fmt_json("123e37", "1230000000000000000000000000000000000000");
+        assert_fmt_json("123e38", "1.23E+40");
+        assert_fmt_json("123e39", "1.23E+41");
+        assert_fmt_json("12300e35", "1230000000000000000000000000000000000000");
+        assert_fmt_json("12300e36", "1.23E+40");
+        assert_fmt_json("12300e37", "1.23E+41");
+        assert_fmt_json("-123e37", "-1230000000000000000000000000000000000000");
+        assert_fmt_json("-123e38", "-1.23E+40");
+        assert_fmt_json("-123e39", "-1.23E+41");
+        assert_fmt_json("-12300e35", "-1230000000000000000000000000000000000000");
+        assert_fmt_json("-12300e36", "-1.23E+40");
+        assert_fmt_json("-12300e37", "-1.23E+41");
+
+        assert_fmt_json("123e-42", "1.23E-40");
+        assert_fmt_json("123e-41", "1.23E-39");
+        assert_fmt_json("123e-40", "0.0000000000000000000000000000000000000123");
+        assert_fmt_json("12300e-44", "1.23E-40");
+        assert_fmt_json("12300e-43", "1.23E-39");
+        assert_fmt_json("12300e-42", "0.0000000000000000000000000000000000000123");
+        assert_fmt_json("-123e-42", "-1.23E-40");
+        assert_fmt_json("-123e-41", "-1.23E-39");
+        assert_fmt_json("-123e-40", "-0.0000000000000000000000000000000000000123");
+        assert_fmt_json("-12300e-44", "-1.23E-40");
+        assert_fmt_json("-12300e-43", "-1.23E-39");
+        assert_fmt_json("-12300e-42", "-0.0000000000000000000000000000000000000123");
+
+        assert_fmt_json("1234.1234e36", "1234123400000000000000000000000000000000");
+        assert_fmt_json("1234.1234e37", "1.2341234E+40");
+        assert_fmt_json("1234.1234e-36", "0.0000000000000000000000000000000012341234");
+        assert_fmt_json("1234.1234e-37", "1.2341234E-34");
+
+        assert_fmt_json(
+            "12345678901234567890123456789012345678e2",
+            "1234567890123456789012345678901234567800",
+        );
+        assert_fmt_json(
+            "12345678901234567890123456789012345678e3",
+            "1.2345678901234567890123456789012345678E+40",
+        );
+        assert_fmt_json(
+            "12345678901234567890123456789012345678e-40",
+            "0.0012345678901234567890123456789012345678",
+        );
+        assert_fmt_json(
+            "12345678901234567890123456789012345678e-41",
+            "1.2345678901234567890123456789012345678E-4",
+        );
+
+        assert_fmt_json(
+            "1234567890123456789012345678901234567800e0",
+            "1234567890123456789012345678901234567800",
+        );
+        assert_fmt_json(
+            "1234567890123456789012345678901234567800e1",
+            "1.2345678901234567890123456789012345678E+40",
+        );
+        assert_fmt_json(
+            "1234567890123456789012345678901234567800e-42",
+            "0.0012345678901234567890123456789012345678",
+        );
+        assert_fmt_json(
+            "1234567890123456789012345678901234567800e-43",
+            "1.2345678901234567890123456789012345678E-4",
+        );
+
+        assert_fmt_json(
+            "12345678901234567.890123456789012345678e19",
+            "123456789012345678901234567890123456.78",
+        );
+        assert_fmt_json(
+            "12345678901234567.890123456789012345678e21",
+            "12345678901234567890123456789012345678",
+        );
+        assert_fmt_json(
+            "12345678901234567.890123456789012345678e23",
+            "1234567890123456789012345678901234567800",
+        );
+        assert_fmt_json(
+            "12345678901234567.890123456789012345678e24",
+            "1.2345678901234567890123456789012345678E+40",
+        );
+        assert_fmt_json(
+            "12345678901234567.890123456789012345678e-15",
+            "12.345678901234567890123456789012345678",
+        );
+        assert_fmt_json(
+            "12345678901234567.890123456789012345678e-17",
+            "0.12345678901234567890123456789012345678",
+        );
+        assert_fmt_json(
+            "12345678901234567.890123456789012345678e-19",
+            "0.0012345678901234567890123456789012345678",
+        );
+        assert_fmt_json(
+            "12345678901234567.890123456789012345678e-21",
+            "1.2345678901234567890123456789012345678E-5",
+        );
+
+        assert_fmt_json(
+            "0.00000000012345678901234567890123456789012345678e-1",
+            "1.2345678901234567890123456789012345678E-11",
+        );
+        assert_fmt_json(
+            "0.00000000012345678901234567890123456789012345678e0",
+            "1.2345678901234567890123456789012345678E-10",
+        );
+        assert_fmt_json(
+            "0.00000000012345678901234567890123456789012345678e6",
+            "1.2345678901234567890123456789012345678E-4",
+        );
+        assert_fmt_json(
+            "0.00000000012345678901234567890123456789012345678e7",
+            "0.0012345678901234567890123456789012345678",
+        );
+        assert_fmt_json(
+            "0.00000000012345678901234567890123456789012345678e47",
+            "12345678901234567890123456789012345678",
+        );
+        assert_fmt_json(
+            "0.00000000012345678901234567890123456789012345678e49",
+            "1234567890123456789012345678901234567800",
+        );
+        assert_fmt_json(
+            "0.00000000012345678901234567890123456789012345678e50",
+            "1.2345678901234567890123456789012345678E+40",
         );
     }
 }
