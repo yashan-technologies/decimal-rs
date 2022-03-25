@@ -1874,6 +1874,13 @@ fn write_exp<W: fmt::Write>(
     Ok(())
 }
 
+impl AsRef<Decimal> for Decimal {
+    #[inline]
+    fn as_ref(&self) -> &Decimal {
+        self
+    }
+}
+
 impl fmt::Display for Decimal {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
