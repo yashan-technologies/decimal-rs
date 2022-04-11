@@ -54,12 +54,16 @@ fn eat_digits(s: &[u8]) -> (&[u8], &[u8]) {
 }
 
 /// Extracts exponent, if any.
-fn extract_exponent(s: &[u8]) -> Result<(i16, &[u8]), DecimalParseError> {
+fn extract_exponent(s: &[u8], decimal_is_zero: bool) -> Result<(i16, &[u8]), DecimalParseError> {
     let (sign, s) = extract_sign(s);
     let (mut number, s) = eat_digits(s);
 
     if number.is_empty() {
         return Err(DecimalParseError::Invalid);
+    }
+
+    if decimal_is_zero {
+        return Ok((0, s));
     }
 
     while number.first() == Some(&b'0') {
@@ -108,7 +112,8 @@ fn parse_decimal(s: &[u8]) -> Result<(Parts, &[u8]), DecimalParseError> {
                 return Err(DecimalParseError::Invalid);
             }
 
-            let (exp, s) = extract_exponent(&s[1..])?;
+            let decimal_is_zero = integral[0] == b'0';
+            let (exp, s) = extract_exponent(&s[1..], decimal_is_zero)?;
             (&b""[..], exp, s)
         }
         Some(&b'.') => {
@@ -123,7 +128,8 @@ fn parse_decimal(s: &[u8]) -> Result<(Parts, &[u8]), DecimalParseError> {
 
             match s.first() {
                 Some(&b'e') | Some(&b'E') => {
-                    let (exp, s) = extract_exponent(&s[1..])?;
+                    let decimal_is_zero = (integral.is_empty() || integral[0] == b'0') && fractional.is_empty();
+                    let (exp, s) = extract_exponent(&s[1..], decimal_is_zero)?;
                     (fractional, exp, s)
                 }
                 _ => (fractional, 0, s),
@@ -440,6 +446,21 @@ mod tests {
         assert_parse("-1e-10", "-0.0000000001");
         assert_parse("0000001.23456000e3", "1234.56");
         assert_parse("-0000001.23456000E-3", "-0.00123456");
+        assert_parse("0e999", "0");
+        assert_parse("0e+99999", "0");
+        assert_parse("0e9999999", "0");
+        assert_parse("0.e999", "0");
+        assert_parse("0.e+99999", "0");
+        assert_parse("0.e9999999", "0");
+        assert_parse("0.0e999", "0");
+        assert_parse("0.0e+99999", "0");
+        assert_parse("0.0e9999999", "0");
+        assert_parse("0.0000e999", "0");
+        assert_parse("0.0000e+99999", "0");
+        assert_parse("0.0000e9999999", "0");
+        assert_parse(".000e999", "0");
+        assert_parse(".000e+99999", "0");
+        assert_parse(".000e9999999", "0");
     }
 
     #[test]
