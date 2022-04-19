@@ -74,7 +74,7 @@ fn decimal_into_u64(bench: &mut Bencher) {
 
 #[inline(always)]
 fn add(x: &Decimal, y: &Decimal) -> Decimal {
-    *x + *y
+    x + y
 }
 
 fn decimal_add(bench: &mut Bencher) {
@@ -87,7 +87,7 @@ fn decimal_add(bench: &mut Bencher) {
 
 #[inline(always)]
 fn sub(x: &Decimal, y: &Decimal) -> Decimal {
-    *x - *y
+    x - y
 }
 
 fn decimal_sub(bench: &mut Bencher) {
@@ -100,7 +100,7 @@ fn decimal_sub(bench: &mut Bencher) {
 
 #[inline(always)]
 fn mul(x: &Decimal, y: &Decimal) -> Decimal {
-    (*x) * (*y)
+    x * y
 }
 
 fn decimal_mul(bench: &mut Bencher) {
@@ -113,7 +113,7 @@ fn decimal_mul(bench: &mut Bencher) {
 
 #[inline(always)]
 fn div(x: &Decimal, y: &Decimal) -> Decimal {
-    *x / *y
+    x / y
 }
 
 fn decimal_div(bench: &mut Bencher) {

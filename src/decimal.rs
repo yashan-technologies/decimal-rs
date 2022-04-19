@@ -950,35 +950,39 @@ impl Decimal {
     /// Add two decimals,
     /// returning `None` if overflow occurred.
     #[inline]
-    pub fn checked_add(&self, other: Decimal) -> Option<Decimal> {
+    pub fn checked_add(&self, other: impl AsRef<Decimal>) -> Option<Decimal> {
+        let other = other.as_ref();
         if self.negative != other.negative {
             if other.negative {
-                self.sub_internal(&other, self.negative)
+                self.sub_internal(other, self.negative)
             } else {
                 other.sub_internal(self, other.negative)
             }
         } else {
-            self.add_internal(&other, self.negative)
+            self.add_internal(other, self.negative)
         }
     }
 
     /// Subtract one decimal from another,
     /// returning `None` if overflow occurred.
     #[inline]
-    pub fn checked_sub(&self, other: Decimal) -> Option<Decimal> {
+    pub fn checked_sub(&self, other: impl AsRef<Decimal>) -> Option<Decimal> {
+        let other = other.as_ref();
         if self.negative != other.negative {
-            self.add_internal(&other, self.negative)
+            self.add_internal(other, self.negative)
         } else if self.negative {
             other.sub_internal(self, !self.negative)
         } else {
-            self.sub_internal(&other, self.negative)
+            self.sub_internal(other, self.negative)
         }
     }
 
     /// Calculate the product of two decimals,
     /// returning `None` if overflow occurred.
     #[inline]
-    pub fn checked_mul(&self, other: Decimal) -> Option<Decimal> {
+    pub fn checked_mul(&self, other: impl AsRef<Decimal>) -> Option<Decimal> {
+        let other = other.as_ref();
+
         if self.is_zero() || other.is_zero() {
             return Some(Decimal::ZERO);
         }
@@ -997,7 +1001,9 @@ impl Decimal {
     /// Checked decimal division.
     /// Computes `self / other`, returning `None` if `other == 0` or the division results in overflow.
     #[inline]
-    pub fn checked_div(&self, other: Decimal) -> Option<Decimal> {
+    pub fn checked_div(&self, other: impl AsRef<Decimal>) -> Option<Decimal> {
+        let other = other.as_ref();
+
         if other.is_zero() {
             return None;
         }
@@ -1026,7 +1032,9 @@ impl Decimal {
     /// Checked decimal remainder.
     /// Computes `self % other`, returning None if rhs == 0 or the division results in overflow.
     #[inline]
-    pub fn checked_rem(&self, other: Decimal) -> Option<Decimal> {
+    pub fn checked_rem(&self, other: impl AsRef<Decimal>) -> Option<Decimal> {
+        let other = other.as_ref();
+
         if other.is_zero() {
             return None;
         }
@@ -1086,9 +1094,9 @@ impl Decimal {
         let mut last = result;
 
         loop {
-            let val = self.checked_div(result)?.normalize();
-            result = result.checked_add(val)?;
-            result = result.checked_mul(Decimal::ZERO_POINT_FIVE)?;
+            let val = self.checked_div(&result)?.normalize();
+            result = result.checked_add(&val)?;
+            result = result.checked_mul(&Decimal::ZERO_POINT_FIVE)?;
 
             if result == last {
                 break;
@@ -1430,7 +1438,7 @@ impl Decimal {
         match exponent {
             0 => Some(Decimal::ONE),
             1 => Some(*self),
-            2 => self.checked_mul(*self),
+            2 => self.checked_mul(self),
             _ => {
                 // Here use Exponentiation by squaring to calculate x^n:
                 // Let a + b + c + ... = n,
@@ -1446,14 +1454,14 @@ impl Decimal {
                 // Multiply once to avoid power_x greater than x^n,
                 // so power_x will not cross the boundary first.
                 if n & 1 == 1 {
-                    sum = sum.checked_mul(power_x)?;
+                    sum = sum.checked_mul(&power_x)?;
                 }
                 n >>= 1;
 
                 while n != 0 {
-                    power_x = power_x.checked_mul(power_x)?;
+                    power_x = power_x.checked_mul(&power_x)?;
                     if n & 1 == 1 {
-                        sum = sum.checked_mul(power_x)?;
+                        sum = sum.checked_mul(&power_x)?;
                     }
                     n >>= 1;
                 }
@@ -1510,7 +1518,7 @@ impl Decimal {
         // x and y in some ranges can be calculated quickly.
         let result = if x.pow_quick_range(y) {
             // x^y won't overflow, so can be calculated quickly
-            Decimal::ONE.checked_div(x.pow_u64(y)?)?
+            Decimal::ONE.checked_div(&x.pow_u64(y)?)?
         } else {
             // x^y maybe overflow, so calculate x^-y with x^(y/2)
 
@@ -1521,9 +1529,9 @@ impl Decimal {
 
             match x.pow_u64(y / 2) {
                 Some(p) => {
-                    let power = Decimal::ONE.checked_div(p)?.checked_div(p)?;
+                    let power = Decimal::ONE.checked_div(&p)?.checked_div(p)?;
                     if y % 2 == 1 {
-                        power.checked_div(x)?
+                        power.checked_div(&x)?
                     } else {
                         power
                     }
@@ -1578,10 +1586,10 @@ impl Decimal {
         let b = *exponent;
 
         let ln = x.ln()?;
-        let exp = ln.checked_mul(b)?;
+        let exp = ln.checked_mul(&b)?;
         let mut result = exp.exp()?;
 
-        if !self.negative && b.checked_rem(Decimal::TWO)? == Decimal::ONE {
+        if !self.negative && b.checked_rem(&Decimal::TWO)? == Decimal::ONE {
             result = -result;
         }
 
@@ -1632,13 +1640,13 @@ impl Decimal {
         let n = exponent;
 
         let a = n.trunc(0);
-        let b = n.checked_sub(a)?;
+        let b = n.checked_sub(&a)?;
 
         let power_a = x.pow_decimal_integral(&a)?;
         let power_b = x.pow_decimal(&b)?;
 
         // x^n = x^(a + b) = x^a * x^b
-        let result = power_a.checked_mul(power_b)?;
+        let result = power_a.checked_mul(&power_b)?;
 
         Some(result)
     }
@@ -1689,24 +1697,26 @@ impl Decimal {
 
         // reduce x into (0.1, 1.1]
         while x > ONE_POINT_ONE {
-            x = x.checked_mul(ZERO_POINT_ONE)?;
+            x = x.checked_mul(&ZERO_POINT_ONE)?;
             n1 += 1;
         }
         while x <= ZERO_POINT_ONE {
-            x = x.checked_mul(TEN)?;
+            x = x.checked_mul(&TEN)?;
             n1 -= 1;
         }
 
         // reduce x into [0.9047, 1.10526)
         while x < LOWER_BOUND {
-            x = x.checked_mul(R)?;
+            x = x.checked_mul(&R)?;
             n2 -= 1;
         }
 
         // z = (1 + y)/(1 - y), then y = (z - 1)/(z + 1)
         let z = x;
-        let y = z.checked_sub(Decimal::ONE)?.checked_div(z.checked_add(Decimal::ONE)?)?;
-        let y_square = y.checked_mul(y)?;
+        let y = z
+            .checked_sub(&Decimal::ONE)?
+            .checked_div(&z.checked_add(&Decimal::ONE)?)?;
+        let y_square = y.checked_mul(&y)?;
 
         // ln(z) = ln((1 + y)/(1 - y)) = 2 * (y + y^3 / 3 + y^5 / 5 + y^7 / 7 + ...)
         let mut sum = y;
@@ -1716,26 +1726,26 @@ impl Decimal {
 
         loop {
             iter += 2;
-            power_y = power_y.checked_mul(y_square)?;
-            let term = power_y.checked_div(iter.into())?;
+            power_y = power_y.checked_mul(&y_square)?;
+            let term = power_y.checked_div(&Decimal::from(iter))?;
 
             if term.is_zero() {
                 break;
             }
 
             last = sum;
-            sum = sum.checked_add(term)?;
+            sum = sum.checked_add(&term)?;
 
             if last == sum {
                 break;
             }
         }
 
-        let ln_z = sum.checked_mul(Decimal::TWO)?;
+        let ln_z = sum.checked_mul(&Decimal::TWO)?;
 
         // ln(x) = ln(z) + n1 * ln(10) + n2 * ln(R).
-        let mut result = ln_z.checked_add(LN_10.checked_mul(n1.into())?)?;
-        result = result.checked_add(LN_R.checked_mul(n2.into())?)?;
+        let mut result = ln_z.checked_add(&LN_10.checked_mul(&Decimal::from(n1))?)?;
+        result = result.checked_add(&LN_R.checked_mul(&Decimal::from(n2))?)?;
         Some(result)
     }
 
@@ -1750,7 +1760,7 @@ impl Decimal {
 
         let x = *self;
         let mut term = x;
-        let mut sum = Decimal::ONE.checked_add(x)?;
+        let mut sum = Decimal::ONE.checked_add(&x)?;
         let mut last;
         let mut iter = 1;
         loop {
@@ -1758,14 +1768,14 @@ impl Decimal {
 
             // Calculate latter term from former term by multiplying x over iter,
             // Divide first then multiply to avoid the intermediate process to cross the boundary.
-            term = term.checked_div(iter.into())?.checked_mul(x)?;
+            term = term.checked_div(&Decimal::from(iter))?.checked_mul(&x)?;
 
             if term.is_zero() {
                 break;
             }
 
             last = sum;
-            sum = sum.checked_add(term)?;
+            sum = sum.checked_add(&term)?;
 
             if last == sum {
                 break;
@@ -1812,13 +1822,13 @@ impl Decimal {
 
         let x = *self;
         let a = x.trunc(0);
-        let b = x.checked_sub(a)?;
+        let b = x.checked_sub(&a)?;
 
         let exp_a = if a.is_sign_positive() {
             NATURAL_EXP[a.int_val as usize]
         } else if a.int_val < UPPER_BOUND.int_val {
             // e^|a| won't overflow
-            Decimal::ONE.checked_div(NATURAL_EXP[a.int_val as usize])?
+            Decimal::ONE.checked_div(&NATURAL_EXP[a.int_val as usize])?
         } else {
             // e^|a| will overflow
             NATURAL_EXP_NEG[(a.int_val - UPPER_BOUND.int_val) as usize]
@@ -1832,7 +1842,7 @@ impl Decimal {
         };
 
         // e^x = e^(a + b) = e^a * e^b
-        let result = exp_a.checked_mul(exp_b)?;
+        let result = exp_a.checked_mul(&exp_b)?;
 
         Some(result)
     }
@@ -2823,7 +2833,7 @@ mod tests {
             unsafe { Decimal::from_raw_parts(41716298478166806118243377939293045745, 164, false) };
         // [e^-299, e^-291]
         for i in 291..300 {
-            let result = EXP_NEGATIVE_291.checked_div(NATURAL_EXP[(i - 291) as usize]).unwrap();
+            let result = EXP_NEGATIVE_291.checked_div(&NATURAL_EXP[(i - 291) as usize]).unwrap();
 
             if i % 5 == 0 {
                 println!("// e^-{}", i);

@@ -42,11 +42,11 @@ impl Neg for &'_ Decimal {
     }
 }
 
-impl Add<Decimal> for &'_ Decimal {
+impl Add<&Decimal> for &Decimal {
     type Output = Decimal;
 
     #[inline(always)]
-    fn add(self, other: Decimal) -> Self::Output {
+    fn add(self, other: &Decimal) -> Self::Output {
         match self.checked_add(other) {
             Some(sum) => sum,
             None => panic!("Addition overflowed"),
@@ -54,19 +54,19 @@ impl Add<Decimal> for &'_ Decimal {
     }
 }
 
-impl AddAssign for Decimal {
+impl AddAssign<&Decimal> for Decimal {
     #[inline(always)]
-    fn add_assign(&mut self, other: Decimal) {
+    fn add_assign(&mut self, other: &Decimal) {
         let result = self.add(other);
         *self = result;
     }
 }
 
-impl Sub<Decimal> for &'_ Decimal {
+impl Sub<&Decimal> for &Decimal {
     type Output = Decimal;
 
     #[inline(always)]
-    fn sub(self, other: Decimal) -> Decimal {
+    fn sub(self, other: &Decimal) -> Decimal {
         match self.checked_sub(other) {
             Some(diff) => diff,
             None => panic!("Subtraction overflowed"),
@@ -74,19 +74,19 @@ impl Sub<Decimal> for &'_ Decimal {
     }
 }
 
-impl SubAssign for Decimal {
+impl SubAssign<&Decimal> for Decimal {
     #[inline(always)]
-    fn sub_assign(&mut self, other: Decimal) {
+    fn sub_assign(&mut self, other: &Decimal) {
         let result = self.sub(other);
         *self = result;
     }
 }
 
-impl Mul<Decimal> for &'_ Decimal {
+impl Mul<&Decimal> for &Decimal {
     type Output = Decimal;
 
     #[inline(always)]
-    fn mul(self, other: Decimal) -> Decimal {
+    fn mul(self, other: &Decimal) -> Decimal {
         match self.checked_mul(other) {
             Some(prod) => prod,
             None => panic!("Multiplication overflowed"),
@@ -94,19 +94,19 @@ impl Mul<Decimal> for &'_ Decimal {
     }
 }
 
-impl MulAssign for Decimal {
+impl MulAssign<&Decimal> for Decimal {
     #[inline(always)]
-    fn mul_assign(&mut self, other: Decimal) {
+    fn mul_assign(&mut self, other: &Decimal) {
         let result = self.mul(other);
         *self = result;
     }
 }
 
-impl Div<Decimal> for &'_ Decimal {
+impl Div<&Decimal> for &Decimal {
     type Output = Decimal;
 
     #[inline(always)]
-    fn div(self, other: Decimal) -> Decimal {
+    fn div(self, other: &Decimal) -> Decimal {
         match self.checked_div(other) {
             Some(quot) => quot,
             None => panic!("Division by zero or overflowed"),
@@ -114,19 +114,19 @@ impl Div<Decimal> for &'_ Decimal {
     }
 }
 
-impl DivAssign for Decimal {
+impl DivAssign<&Decimal> for Decimal {
     #[inline(always)]
-    fn div_assign(&mut self, other: Decimal) {
+    fn div_assign(&mut self, other: &Decimal) {
         let result = self.div(other);
         *self = result;
     }
 }
 
-impl Rem<Decimal> for &Decimal {
+impl Rem<&Decimal> for &Decimal {
     type Output = Decimal;
 
     #[inline(always)]
-    fn rem(self, other: Decimal) -> Decimal {
+    fn rem(self, other: &Decimal) -> Decimal {
         match self.checked_rem(other) {
             Some(rem) => rem,
             None => panic!("Division by zero or overflowed"),
@@ -134,9 +134,9 @@ impl Rem<Decimal> for &Decimal {
     }
 }
 
-impl RemAssign for Decimal {
+impl RemAssign<&Decimal> for Decimal {
     #[inline(always)]
-    fn rem_assign(&mut self, other: Decimal) {
+    fn rem_assign(&mut self, other: &Decimal) {
         let result = self.rem(other);
         *self = result;
     }
@@ -149,9 +149,23 @@ impl Sum for Decimal {
     }
 }
 
+impl<'a> Sum<&'a Decimal> for Decimal {
+    #[inline(always)]
+    fn sum<I: Iterator<Item = &'a Decimal>>(iter: I) -> Self {
+        iter.fold(Decimal::ZERO, Add::add)
+    }
+}
+
 impl Product for Decimal {
     #[inline(always)]
     fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Decimal::ONE, Mul::mul)
+    }
+}
+
+impl<'a> Product<&'a Decimal> for Decimal {
+    #[inline(always)]
+    fn product<I: Iterator<Item = &'a Decimal>>(iter: I) -> Self {
         iter.fold(Decimal::ONE, Mul::mul)
     }
 }
@@ -163,7 +177,7 @@ macro_rules! impl_arith_with_num {
 
             #[inline(always)]
             fn $method(self, other: $int) -> Self::Output {
-                self.$method(Decimal::from(other))
+                self.$method(&Decimal::from(other))
             }
         }
 
@@ -172,7 +186,7 @@ macro_rules! impl_arith_with_num {
 
             #[inline(always)]
             fn $method(self, other: $int) -> Self::Output {
-                self.$method(Decimal::from(other))
+                self.$method(&Decimal::from(other))
             }
         }
 
@@ -206,7 +220,7 @@ macro_rules! impl_arith_try_with_num {
 
             #[inline(always)]
             fn $method(self, other: $int) -> Self::Output {
-                self.$method(Decimal::try_from(other).unwrap())
+                self.$method(&Decimal::try_from(other).unwrap())
             }
         }
 
@@ -215,7 +229,7 @@ macro_rules! impl_arith_try_with_num {
 
             #[inline(always)]
             fn $method(self, other: $int) -> Self::Output {
-                self.$method(Decimal::try_from(other).unwrap())
+                self.$method(&Decimal::try_from(other).unwrap())
             }
         }
 
@@ -249,7 +263,7 @@ macro_rules! impl_arith {
 
             #[inline(always)]
             fn $method(self, other: Self) -> Self::Output {
-                (&self).$method(other)
+                (&self).$method(&other)
             }
         }
 
@@ -258,16 +272,16 @@ macro_rules! impl_arith {
 
             #[inline(always)]
             fn $method(self, other: &Decimal) -> Self::Output {
-                (&self).$method(*other)
+                (&self).$method(other)
             }
         }
 
-        impl $op<&'_ Decimal> for &'_ Decimal {
+        impl $op<Decimal> for &'_ Decimal {
             type Output = Decimal;
 
             #[inline(always)]
-            fn $method(self, other: &Decimal) -> Self::Output {
-                self.$method(*other)
+            fn $method(self, other: Decimal) -> Self::Output {
+                self.$method(&other)
             }
         }
 
@@ -287,14 +301,14 @@ macro_rules! impl_arith_assign_with_num {
         impl $op<$int> for Decimal {
             #[inline(always)]
             fn $method(&mut self, other: $int) {
-                self.$method(Decimal::from(other))
+                self.$method(&Decimal::from(other))
             }
         }
 
         impl $op<$int> for &mut Decimal {
             #[inline(always)]
             fn $method(&mut self, other: $int) {
-                (*self).$method(Decimal::from(other))
+                (*self).$method(&Decimal::from(other))
             }
         }
     };
@@ -308,14 +322,14 @@ macro_rules! impl_arith_assign_try_with_num {
         impl $op<$int> for Decimal {
             #[inline(always)]
             fn $method(&mut self, other: $int) {
-                self.$method(Decimal::try_from(other).unwrap())
+                self.$method(&Decimal::try_from(other).unwrap())
             }
         }
 
         impl $op<$int> for &mut Decimal {
             #[inline(always)]
             fn $method(&mut self, other: $int) {
-                (*self).$method(Decimal::try_from(other).unwrap())
+                (*self).$method(&Decimal::try_from(other).unwrap())
             }
         }
     };
@@ -329,21 +343,21 @@ macro_rules! impl_arith_assign {
         impl $op<Decimal> for &mut Decimal {
             #[inline(always)]
             fn $method(&mut self, other: Decimal) {
-                (*self).$method(other)
-            }
-        }
-
-        impl $op<&Decimal> for Decimal {
-            #[inline(always)]
-            fn $method(&mut self, other: &Decimal) {
-                self.$method(*other)
+                (*self).$method(&other)
             }
         }
 
         impl $op<&Decimal> for &mut Decimal {
             #[inline(always)]
             fn $method(&mut self, other: &Decimal) {
-                (*self).$method(*other)
+                (*self).$method(other)
+            }
+        }
+
+        impl $op<Decimal> for Decimal {
+            #[inline(always)]
+            fn $method(&mut self, other: Decimal) {
+                self.$method(&other)
             }
         }
 
