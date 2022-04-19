@@ -757,39 +757,45 @@ impl Decimal {
         false
     }
 
-    /// Normalize a `Decimal`'s scale toward zero.
+    /// Normalize a `Decimal`'s scale toward specified `scale`.
     #[inline]
-    pub fn normalize(&self) -> Decimal {
+    pub fn normalize_to_scale(&self, scale: i16) -> Decimal {
         if self.is_zero() {
             return Decimal::ZERO;
         }
 
-        if self.scale == 0 {
+        if self.scale == scale {
             return *self;
         }
 
-        let mut scale = self.scale;
+        let mut current_scale = self.scale;
         let mut int_val = self.int_val;
 
-        while scale > 0 {
+        while current_scale > scale {
             if int_val % 10 > 0 {
                 break;
             }
 
             int_val /= 10;
-            scale -= 1;
+            current_scale -= 1;
         }
 
-        while scale < 0 {
+        while current_scale < scale {
             if int_val >= 10_0000_0000_0000_0000_0000_0000_0000_0000_0000_u128 {
                 break;
             }
 
             int_val *= 10;
-            scale += 1;
+            current_scale += 1;
         }
 
-        unsafe { Decimal::from_parts_unchecked(int_val, scale, self.negative) }
+        unsafe { Decimal::from_parts_unchecked(int_val, current_scale, self.negative) }
+    }
+
+    /// Normalize a `Decimal`'s scale toward zero.
+    #[inline]
+    pub fn normalize(&self) -> Decimal {
+        self.normalize_to_scale(0)
     }
 
     #[inline]
@@ -2327,6 +2333,30 @@ mod tests {
         assert("5E-47", 1, 10, "0");
         assert("-1E-130", 38, 10, "0");
         assert("0.000811111", 5, 3, "0.001");
+    }
+
+    #[test]
+    fn test_normalize_to() {
+        fn assert_normalize(val: (u128, i16), scale: i16, expected: (u128, i16)) {
+            let left = Decimal::from_parts(val.0, val.1, false).unwrap();
+            let right = Decimal::from_parts(expected.0, expected.1, false).unwrap();
+            assert_eq!(left, right);
+            let normal = left.normalize_to_scale(scale);
+            assert_eq!((normal.int_val, normal.scale), expected);
+        }
+
+        assert_normalize((12300, MAX_SCALE), 2, (123, MAX_SCALE - 2));
+        assert_normalize((12300, 2), 2, (12300, 2));
+        assert_normalize((12300, 2), 3, (123000, 3));
+        assert_normalize((12300, 2), 0, (123, 0));
+        assert_normalize((12300, 2), -1, (123, 0));
+        assert_normalize((123000, 2), -1, (123, -1));
+        assert_normalize(
+            (9_9999_9999_9999_9999_9999_9999_9999_9999_9999_u128, -2),
+            2,
+            (99_9999_9999_9999_9999_9999_9999_9999_9999_9990_u128, -1),
+        );
+        assert_normalize((12300, MIN_SCALE + 1), -100, (123000000000000000000000000000, -100));
     }
 
     #[test]
