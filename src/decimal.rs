@@ -35,413 +35,409 @@ const SCALE_MASK: u8 = 0x02;
 const SCALE_SHIFT: u8 = 1;
 
 /// Computes by Taylor series, not accurate values.
-const NATURAL_EXP: [Decimal; 291] = [
+static NATURAL_EXP: [Decimal; 291] = [
     // e^0
-    unsafe { Decimal::from_parts_unchecked(1, 0, false) },
-    unsafe { Decimal::from_parts_unchecked(27182818284590452353602874713526624975, 37, false) },
-    unsafe { Decimal::from_parts_unchecked(73890560989306502272304274605750078133, 37, false) },
-    unsafe { Decimal::from_parts_unchecked(20085536923187667740928529654581717900, 36, false) },
-    unsafe { Decimal::from_parts_unchecked(54598150033144239078110261202860878404, 36, false) },
+    unsafe { Decimal::from_raw_parts(1, 0, false) },
+    unsafe { Decimal::from_raw_parts(27182818284590452353602874713526624975, 37, false) },
+    unsafe { Decimal::from_raw_parts(73890560989306502272304274605750078133, 37, false) },
+    unsafe { Decimal::from_raw_parts(20085536923187667740928529654581717900, 36, false) },
+    unsafe { Decimal::from_raw_parts(54598150033144239078110261202860878404, 36, false) },
     // e^5
-    unsafe { Decimal::from_parts_unchecked(14841315910257660342111558004055227960, 35, false) },
-    unsafe { Decimal::from_parts_unchecked(40342879349273512260838718054338827962, 35, false) },
-    unsafe { Decimal::from_parts_unchecked(10966331584284585992637202382881214326, 34, false) },
-    unsafe { Decimal::from_parts_unchecked(29809579870417282747435920994528886736, 34, false) },
-    unsafe { Decimal::from_parts_unchecked(81030839275753840077099966894327599646, 34, false) },
+    unsafe { Decimal::from_raw_parts(14841315910257660342111558004055227960, 35, false) },
+    unsafe { Decimal::from_raw_parts(40342879349273512260838718054338827962, 35, false) },
+    unsafe { Decimal::from_raw_parts(10966331584284585992637202382881214326, 34, false) },
+    unsafe { Decimal::from_raw_parts(29809579870417282747435920994528886736, 34, false) },
+    unsafe { Decimal::from_raw_parts(81030839275753840077099966894327599646, 34, false) },
     // e^10
-    unsafe { Decimal::from_parts_unchecked(22026465794806716516957900645284244366, 33, false) },
-    unsafe { Decimal::from_parts_unchecked(59874141715197818455326485792257781616, 33, false) },
-    unsafe { Decimal::from_parts_unchecked(16275479141900392080800520489848678316, 32, false) },
-    unsafe { Decimal::from_parts_unchecked(44241339200892050332610277594908828183, 32, false) },
-    unsafe { Decimal::from_parts_unchecked(12026042841647767777492367707678594496, 31, false) },
+    unsafe { Decimal::from_raw_parts(22026465794806716516957900645284244366, 33, false) },
+    unsafe { Decimal::from_raw_parts(59874141715197818455326485792257781616, 33, false) },
+    unsafe { Decimal::from_raw_parts(16275479141900392080800520489848678316, 32, false) },
+    unsafe { Decimal::from_raw_parts(44241339200892050332610277594908828183, 32, false) },
+    unsafe { Decimal::from_raw_parts(12026042841647767777492367707678594496, 31, false) },
     // e^15
-    unsafe { Decimal::from_parts_unchecked(32690173724721106393018550460917213156, 31, false) },
-    unsafe { Decimal::from_parts_unchecked(88861105205078726367630237407814503509, 31, false) },
-    unsafe { Decimal::from_parts_unchecked(24154952753575298214775435180385823883, 30, false) },
-    unsafe { Decimal::from_parts_unchecked(65659969137330511138786503259060033570, 30, false) },
-    unsafe { Decimal::from_parts_unchecked(17848230096318726084491003378872270387, 29, false) },
+    unsafe { Decimal::from_raw_parts(32690173724721106393018550460917213156, 31, false) },
+    unsafe { Decimal::from_raw_parts(88861105205078726367630237407814503509, 31, false) },
+    unsafe { Decimal::from_raw_parts(24154952753575298214775435180385823883, 30, false) },
+    unsafe { Decimal::from_raw_parts(65659969137330511138786503259060033570, 30, false) },
+    unsafe { Decimal::from_raw_parts(17848230096318726084491003378872270387, 29, false) },
     // e^20
-    unsafe { Decimal::from_parts_unchecked(48516519540979027796910683054154055870, 29, false) },
-    unsafe { Decimal::from_parts_unchecked(13188157344832146972099988837453027850, 28, false) },
-    unsafe { Decimal::from_parts_unchecked(35849128461315915616811599459784206894, 28, false) },
-    unsafe { Decimal::from_parts_unchecked(97448034462489026000346326848229752775, 28, false) },
-    unsafe { Decimal::from_parts_unchecked(26489122129843472294139162152811882340, 27, false) },
+    unsafe { Decimal::from_raw_parts(48516519540979027796910683054154055870, 29, false) },
+    unsafe { Decimal::from_raw_parts(13188157344832146972099988837453027850, 28, false) },
+    unsafe { Decimal::from_raw_parts(35849128461315915616811599459784206894, 28, false) },
+    unsafe { Decimal::from_raw_parts(97448034462489026000346326848229752775, 28, false) },
+    unsafe { Decimal::from_raw_parts(26489122129843472294139162152811882340, 27, false) },
     // e^25
-    unsafe { Decimal::from_parts_unchecked(72004899337385872524161351466126157931, 27, false) },
-    unsafe { Decimal::from_parts_unchecked(19572960942883876426977639787609534281, 26, false) },
-    unsafe { Decimal::from_parts_unchecked(53204824060179861668374730434117744164, 26, false) },
-    unsafe { Decimal::from_parts_unchecked(14462570642914751736770474229969288564, 25, false) },
-    unsafe { Decimal::from_parts_unchecked(39313342971440420743886205808435276867, 25, false) },
+    unsafe { Decimal::from_raw_parts(72004899337385872524161351466126157931, 27, false) },
+    unsafe { Decimal::from_raw_parts(19572960942883876426977639787609534281, 26, false) },
+    unsafe { Decimal::from_raw_parts(53204824060179861668374730434117744164, 26, false) },
+    unsafe { Decimal::from_raw_parts(14462570642914751736770474229969288564, 25, false) },
+    unsafe { Decimal::from_raw_parts(39313342971440420743886205808435276867, 25, false) },
     // e^30
-    unsafe { Decimal::from_parts_unchecked(10686474581524462146990468650741401654, 24, false) },
-    unsafe { Decimal::from_parts_unchecked(29048849665247425231085682111679825660, 24, false) },
-    unsafe { Decimal::from_parts_unchecked(78962960182680695160978022635108224222, 24, false) },
-    unsafe { Decimal::from_parts_unchecked(21464357978591606462429776153126088037, 23, false) },
-    unsafe { Decimal::from_parts_unchecked(58346174252745488140290273461039101919, 23, false) },
+    unsafe { Decimal::from_raw_parts(10686474581524462146990468650741401654, 24, false) },
+    unsafe { Decimal::from_raw_parts(29048849665247425231085682111679825660, 24, false) },
+    unsafe { Decimal::from_raw_parts(78962960182680695160978022635108224222, 24, false) },
+    unsafe { Decimal::from_raw_parts(21464357978591606462429776153126088037, 23, false) },
+    unsafe { Decimal::from_raw_parts(58346174252745488140290273461039101919, 23, false) },
     // e^35
-    unsafe { Decimal::from_parts_unchecked(15860134523134307281296446257746601247, 22, false) },
-    unsafe { Decimal::from_parts_unchecked(43112315471151952271134222928569253911, 22, false) },
-    unsafe { Decimal::from_parts_unchecked(11719142372802611308772939791190194524, 21, false) },
-    unsafe { Decimal::from_parts_unchecked(31855931757113756220328671701298645997, 21, false) },
-    unsafe { Decimal::from_parts_unchecked(86593400423993746953606932719264934249, 21, false) },
+    unsafe { Decimal::from_raw_parts(15860134523134307281296446257746601247, 22, false) },
+    unsafe { Decimal::from_raw_parts(43112315471151952271134222928569253911, 22, false) },
+    unsafe { Decimal::from_raw_parts(11719142372802611308772939791190194524, 21, false) },
+    unsafe { Decimal::from_raw_parts(31855931757113756220328671701298645997, 21, false) },
+    unsafe { Decimal::from_raw_parts(86593400423993746953606932719264934249, 21, false) },
     // e^40
-    unsafe { Decimal::from_parts_unchecked(23538526683701998540789991074903480449, 20, false) },
-    unsafe { Decimal::from_parts_unchecked(63984349353005494922266340351557081880, 20, false) },
-    unsafe { Decimal::from_parts_unchecked(17392749415205010473946813036112352260, 19, false) },
-    unsafe { Decimal::from_parts_unchecked(47278394682293465614744575627442803712, 19, false) },
-    unsafe { Decimal::from_parts_unchecked(12851600114359308275809299632143099259, 18, false) },
+    unsafe { Decimal::from_raw_parts(23538526683701998540789991074903480449, 20, false) },
+    unsafe { Decimal::from_raw_parts(63984349353005494922266340351557081880, 20, false) },
+    unsafe { Decimal::from_raw_parts(17392749415205010473946813036112352260, 19, false) },
+    unsafe { Decimal::from_raw_parts(47278394682293465614744575627442803712, 19, false) },
+    unsafe { Decimal::from_raw_parts(12851600114359308275809299632143099259, 18, false) },
     // e^45
-    unsafe { Decimal::from_parts_unchecked(34934271057485095348034797233406099546, 18, false) },
-    unsafe { Decimal::from_parts_unchecked(94961194206024488745133649117118323116, 18, false) },
-    unsafe { Decimal::from_parts_unchecked(25813128861900673962328580021527338043, 17, false) },
-    unsafe { Decimal::from_parts_unchecked(70167359120976317386547159988611740555, 17, false) },
-    unsafe { Decimal::from_parts_unchecked(19073465724950996905250998409538484479, 16, false) },
+    unsafe { Decimal::from_raw_parts(34934271057485095348034797233406099546, 18, false) },
+    unsafe { Decimal::from_raw_parts(94961194206024488745133649117118323116, 18, false) },
+    unsafe { Decimal::from_raw_parts(25813128861900673962328580021527338043, 17, false) },
+    unsafe { Decimal::from_raw_parts(70167359120976317386547159988611740555, 17, false) },
+    unsafe { Decimal::from_raw_parts(19073465724950996905250998409538484479, 16, false) },
     // e^50
-    unsafe { Decimal::from_parts_unchecked(51847055285870724640874533229334853872, 16, false) },
-    unsafe { Decimal::from_parts_unchecked(14093490824269387964492143312370168789, 15, false) },
-    unsafe { Decimal::from_parts_unchecked(38310080007165768493035695487861993900, 15, false) },
-    unsafe { Decimal::from_parts_unchecked(10413759433029087797183472933493796442, 14, false) },
-    unsafe { Decimal::from_parts_unchecked(28307533032746939004420635480140745403, 14, false) },
+    unsafe { Decimal::from_raw_parts(51847055285870724640874533229334853872, 16, false) },
+    unsafe { Decimal::from_raw_parts(14093490824269387964492143312370168789, 15, false) },
+    unsafe { Decimal::from_raw_parts(38310080007165768493035695487861993900, 15, false) },
+    unsafe { Decimal::from_raw_parts(10413759433029087797183472933493796442, 14, false) },
+    unsafe { Decimal::from_raw_parts(28307533032746939004420635480140745403, 14, false) },
     // e^55
-    unsafe { Decimal::from_parts_unchecked(76947852651420171381827455901293939935, 14, false) },
-    unsafe { Decimal::from_parts_unchecked(20916594960129961539070711572146737783, 13, false) },
-    unsafe { Decimal::from_parts_unchecked(56857199993359322226403488206332533049, 13, false) },
-    unsafe { Decimal::from_parts_unchecked(15455389355901039303530766911174620071, 12, false) },
-    unsafe { Decimal::from_parts_unchecked(42012104037905142549565934307191617692, 12, false) },
+    unsafe { Decimal::from_raw_parts(76947852651420171381827455901293939935, 14, false) },
+    unsafe { Decimal::from_raw_parts(20916594960129961539070711572146737783, 13, false) },
+    unsafe { Decimal::from_raw_parts(56857199993359322226403488206332533049, 13, false) },
+    unsafe { Decimal::from_raw_parts(15455389355901039303530766911174620071, 12, false) },
+    unsafe { Decimal::from_raw_parts(42012104037905142549565934307191617692, 12, false) },
     // e^60
-    unsafe { Decimal::from_parts_unchecked(11420073898156842836629571831447656295, 11, false) },
-    unsafe { Decimal::from_parts_unchecked(31042979357019199087073421411071003730, 11, false) },
-    unsafe { Decimal::from_parts_unchecked(84383566687414544890733294803731179603, 11, false) },
-    unsafe { Decimal::from_parts_unchecked(22937831594696098790993528402686136005, 10, false) },
-    unsafe { Decimal::from_parts_unchecked(62351490808116168829092387089284697469, 10, false) },
+    unsafe { Decimal::from_raw_parts(11420073898156842836629571831447656295, 11, false) },
+    unsafe { Decimal::from_raw_parts(31042979357019199087073421411071003730, 11, false) },
+    unsafe { Decimal::from_raw_parts(84383566687414544890733294803731179603, 11, false) },
+    unsafe { Decimal::from_raw_parts(22937831594696098790993528402686136005, 10, false) },
+    unsafe { Decimal::from_raw_parts(62351490808116168829092387089284697469, 10, false) },
     // e^65
-    unsafe { Decimal::from_parts_unchecked(16948892444103337141417836114371974954, 9, false) },
-    unsafe { Decimal::from_parts_unchecked(46071866343312915426773184428060086892, 9, false) },
-    unsafe { Decimal::from_parts_unchecked(12523631708422137805135219607443657677, 8, false) },
-    unsafe { Decimal::from_parts_unchecked(34042760499317405213769071870043505954, 8, false) },
-    unsafe { Decimal::from_parts_unchecked(92537817255877876002423979166873458740, 8, false) },
+    unsafe { Decimal::from_raw_parts(16948892444103337141417836114371974954, 9, false) },
+    unsafe { Decimal::from_raw_parts(46071866343312915426773184428060086892, 9, false) },
+    unsafe { Decimal::from_raw_parts(12523631708422137805135219607443657677, 8, false) },
+    unsafe { Decimal::from_raw_parts(34042760499317405213769071870043505954, 8, false) },
+    unsafe { Decimal::from_raw_parts(92537817255877876002423979166873458740, 8, false) },
     // e^70
-    unsafe { Decimal::from_parts_unchecked(25154386709191670062657811742521129623, 7, false) },
-    unsafe { Decimal::from_parts_unchecked(68376712297627438667558928266777109561, 7, false) },
-    unsafe { Decimal::from_parts_unchecked(18586717452841279803403701812545411949, 6, false) },
-    unsafe { Decimal::from_parts_unchecked(50523936302761041945570383321857646506, 6, false) },
-    unsafe { Decimal::from_parts_unchecked(13733829795401761877841885298085389320, 5, false) },
+    unsafe { Decimal::from_raw_parts(25154386709191670062657811742521129623, 7, false) },
+    unsafe { Decimal::from_raw_parts(68376712297627438667558928266777109561, 7, false) },
+    unsafe { Decimal::from_raw_parts(18586717452841279803403701812545411949, 6, false) },
+    unsafe { Decimal::from_raw_parts(50523936302761041945570383321857646506, 6, false) },
+    unsafe { Decimal::from_raw_parts(13733829795401761877841885298085389320, 5, false) },
     // e^75
-    unsafe { Decimal::from_parts_unchecked(37332419967990016402549083172647001445, 5, false) },
-    unsafe { Decimal::from_parts_unchecked(10148003881138887278324617841317169760, 4, false) },
-    unsafe { Decimal::from_parts_unchecked(27585134545231702062864698199026619434, 4, false) },
-    unsafe { Decimal::from_parts_unchecked(74984169969901204346756305912240604567, 4, false) },
-    unsafe { Decimal::from_parts_unchecked(20382810665126687668323137537172632374, 3, false) },
+    unsafe { Decimal::from_raw_parts(37332419967990016402549083172647001445, 5, false) },
+    unsafe { Decimal::from_raw_parts(10148003881138887278324617841317169760, 4, false) },
+    unsafe { Decimal::from_raw_parts(27585134545231702062864698199026619434, 4, false) },
+    unsafe { Decimal::from_raw_parts(74984169969901204346756305912240604567, 4, false) },
+    unsafe { Decimal::from_raw_parts(20382810665126687668323137537172632374, 3, false) },
     // e^80
-    unsafe { Decimal::from_parts_unchecked(55406223843935100525711733958316612937, 3, false) },
-    unsafe { Decimal::from_parts_unchecked(15060973145850305483525941301676749817, 2, false) },
-    unsafe { Decimal::from_parts_unchecked(40939969621274546966609142293278290448, 2, false) },
-    unsafe { Decimal::from_parts_unchecked(11128637547917594120870714781839408062, 1, false) },
-    unsafe { Decimal::from_parts_unchecked(30250773222011423382665663964434287432, 1, false) },
+    unsafe { Decimal::from_raw_parts(55406223843935100525711733958316612937, 3, false) },
+    unsafe { Decimal::from_raw_parts(15060973145850305483525941301676749817, 2, false) },
+    unsafe { Decimal::from_raw_parts(40939969621274546966609142293278290448, 2, false) },
+    unsafe { Decimal::from_raw_parts(11128637547917594120870714781839408062, 1, false) },
+    unsafe { Decimal::from_raw_parts(30250773222011423382665663964434287432, 1, false) },
     // e^85
-    unsafe { Decimal::from_parts_unchecked(82230127146229135103043280164077746957, 1, false) },
-    unsafe { Decimal::from_parts_unchecked(22352466037347150474430657323327147399, 0, false) },
-    unsafe { Decimal::from_parts_unchecked(60760302250568721495223289381302760758, 0, false) },
-    unsafe { Decimal::from_parts_unchecked(16516362549940018555283297962648587672, -1, false) },
-    unsafe { Decimal::from_parts_unchecked(44896128191743452462842455796453162784, -1, false) },
+    unsafe { Decimal::from_raw_parts(82230127146229135103043280164077746957, 1, false) },
+    unsafe { Decimal::from_raw_parts(22352466037347150474430657323327147399, 0, false) },
+    unsafe { Decimal::from_raw_parts(60760302250568721495223289381302760758, 0, false) },
+    unsafe { Decimal::from_raw_parts(16516362549940018555283297962648587672, -1, false) },
+    unsafe { Decimal::from_raw_parts(44896128191743452462842455796453162784, -1, false) },
     // e^90
-    unsafe { Decimal::from_parts_unchecked(12204032943178408020027100351363697548, -2, false) },
-    unsafe { Decimal::from_parts_unchecked(33174000983357426257555161078525919101, -2, false) },
-    unsafe { Decimal::from_parts_unchecked(90176284050342989314009959821709052567, -2, false) },
-    unsafe { Decimal::from_parts_unchecked(24512455429200857855527729431109153420, -3, false) },
-    unsafe { Decimal::from_parts_unchecked(66631762164108958342448140502408732643, -3, false) },
+    unsafe { Decimal::from_raw_parts(12204032943178408020027100351363697548, -2, false) },
+    unsafe { Decimal::from_raw_parts(33174000983357426257555161078525919101, -2, false) },
+    unsafe { Decimal::from_raw_parts(90176284050342989314009959821709052567, -2, false) },
+    unsafe { Decimal::from_raw_parts(24512455429200857855527729431109153420, -3, false) },
+    unsafe { Decimal::from_raw_parts(66631762164108958342448140502408732643, -3, false) },
     // e^95
-    unsafe { Decimal::from_parts_unchecked(18112390828890232821937987580988159254, -4, false) },
-    unsafe { Decimal::from_parts_unchecked(49234582860120583997548620591133044956, -4, false) },
-    unsafe { Decimal::from_parts_unchecked(13383347192042695004617364087061150290, -5, false) },
-    unsafe { Decimal::from_parts_unchecked(36379709476088045792877438267601857313, -5, false) },
-    unsafe { Decimal::from_parts_unchecked(98890303193469467705600309671380371021, -5, false) },
+    unsafe { Decimal::from_raw_parts(18112390828890232821937987580988159254, -4, false) },
+    unsafe { Decimal::from_raw_parts(49234582860120583997548620591133044956, -4, false) },
+    unsafe { Decimal::from_raw_parts(13383347192042695004617364087061150290, -5, false) },
+    unsafe { Decimal::from_raw_parts(36379709476088045792877438267601857313, -5, false) },
+    unsafe { Decimal::from_raw_parts(98890303193469467705600309671380371021, -5, false) },
     // e^100
-    unsafe { Decimal::from_parts_unchecked(26881171418161354484126255515800135886, -6, false) },
-    unsafe { Decimal::from_parts_unchecked(73070599793680672726476826340615135883, -6, false) },
-    unsafe { Decimal::from_parts_unchecked(19862648361376543258740468906137709930, -7, false) },
-    unsafe { Decimal::from_parts_unchecked(53992276105801688697616842371936818967, -7, false) },
-    unsafe { Decimal::from_parts_unchecked(14676622301554423285107021120870470922, -8, false) },
+    unsafe { Decimal::from_raw_parts(26881171418161354484126255515800135886, -6, false) },
+    unsafe { Decimal::from_raw_parts(73070599793680672726476826340615135883, -6, false) },
+    unsafe { Decimal::from_raw_parts(19862648361376543258740468906137709930, -7, false) },
+    unsafe { Decimal::from_raw_parts(53992276105801688697616842371936818967, -7, false) },
+    unsafe { Decimal::from_raw_parts(14676622301554423285107021120870470922, -8, false) },
     // e^105
-    unsafe { Decimal::from_parts_unchecked(39895195705472158507637572787300953989, -8, false) },
-    unsafe { Decimal::from_parts_unchecked(10844638552900230813361001028568739551, -9, false) },
-    unsafe { Decimal::from_parts_unchecked(29478783914555093773878202487079276618, -9, false) },
-    unsafe { Decimal::from_parts_unchecked(80131642640005911410561058362935555141, -9, false) },
-    unsafe { Decimal::from_parts_unchecked(21782038807290206355539393313936824934, -10, false) },
+    unsafe { Decimal::from_raw_parts(39895195705472158507637572787300953989, -8, false) },
+    unsafe { Decimal::from_raw_parts(10844638552900230813361001028568739551, -9, false) },
+    unsafe { Decimal::from_raw_parts(29478783914555093773878202487079276618, -9, false) },
+    unsafe { Decimal::from_raw_parts(80131642640005911410561058362935555141, -9, false) },
+    unsafe { Decimal::from_raw_parts(21782038807290206355539393313936824934, -10, false) },
     // e^110
-    unsafe { Decimal::from_parts_unchecked(59209720276646702989552288155880397734, -10, false) },
-    unsafe { Decimal::from_parts_unchecked(16094870669615180549262332993373505801, -11, false) },
-    unsafe { Decimal::from_parts_unchecked(43750394472613410734625746750879389186, -11, false) },
-    unsafe { Decimal::from_parts_unchecked(11892590228282008819681954096389267312, -12, false) },
-    unsafe { Decimal::from_parts_unchecked(32327411910848593114262354205829189194, -12, false) },
+    unsafe { Decimal::from_raw_parts(59209720276646702989552288155880397734, -10, false) },
+    unsafe { Decimal::from_raw_parts(16094870669615180549262332993373505801, -11, false) },
+    unsafe { Decimal::from_raw_parts(43750394472613410734625746750879389186, -11, false) },
+    unsafe { Decimal::from_raw_parts(11892590228282008819681954096389267312, -12, false) },
+    unsafe { Decimal::from_raw_parts(32327411910848593114262354205829189194, -12, false) },
     // e^115
-    unsafe { Decimal::from_parts_unchecked(87875016358370231131069738030496383831, -12, false) },
-    unsafe { Decimal::from_parts_unchecked(23886906014249914254626392949441611667, -13, false) },
-    unsafe { Decimal::from_parts_unchecked(64931342556644621362249507087712085619, -13, false) },
-    unsafe { Decimal::from_parts_unchecked(17650168856917655832911782056447182390, -14, false) },
-    unsafe { Decimal::from_parts_unchecked(47978133272993021860034882895011331584, -14, false) },
+    unsafe { Decimal::from_raw_parts(87875016358370231131069738030496383831, -12, false) },
+    unsafe { Decimal::from_raw_parts(23886906014249914254626392949441611667, -13, false) },
+    unsafe { Decimal::from_raw_parts(64931342556644621362249507087712085619, -13, false) },
+    unsafe { Decimal::from_raw_parts(17650168856917655832911782056447182390, -14, false) },
+    unsafe { Decimal::from_raw_parts(47978133272993021860034882895011331584, -14, false) },
     // e^120
-    unsafe { Decimal::from_parts_unchecked(13041808783936322797338790280986488115, -15, false) },
-    unsafe { Decimal::from_parts_unchecked(35451311827611664751894074212478186941, -15, false) },
-    unsafe { Decimal::from_parts_unchecked(96366656736032012717638730141942241231, -15, false) },
-    unsafe { Decimal::from_parts_unchecked(26195173187490626761889810253746390880, -16, false) },
-    unsafe { Decimal::from_parts_unchecked(71205863268893377088330680682701942197, -16, false) },
+    unsafe { Decimal::from_raw_parts(13041808783936322797338790280986488115, -15, false) },
+    unsafe { Decimal::from_raw_parts(35451311827611664751894074212478186941, -15, false) },
+    unsafe { Decimal::from_raw_parts(96366656736032012717638730141942241231, -15, false) },
+    unsafe { Decimal::from_raw_parts(26195173187490626761889810253746390880, -16, false) },
+    unsafe { Decimal::from_raw_parts(71205863268893377088330680682701942197, -16, false) },
     // e^125
-    unsafe { Decimal::from_parts_unchecked(19355760420357225687206244905274872200, -17, false) },
-    unsafe { Decimal::from_parts_unchecked(52614411826663857451767767041616346183, -17, false) },
-    unsafe { Decimal::from_parts_unchecked(14302079958348104463583671072905261088, -18, false) },
-    unsafe { Decimal::from_parts_unchecked(38877084059945950922226736883574780745, -18, false) },
-    unsafe { Decimal::from_parts_unchecked(10567887114362588125648834960427354587, -19, false) },
+    unsafe { Decimal::from_raw_parts(19355760420357225687206244905274872200, -17, false) },
+    unsafe { Decimal::from_raw_parts(52614411826663857451767767041616346183, -17, false) },
+    unsafe { Decimal::from_raw_parts(14302079958348104463583671072905261088, -18, false) },
+    unsafe { Decimal::from_raw_parts(38877084059945950922226736883574780745, -18, false) },
+    unsafe { Decimal::from_raw_parts(10567887114362588125648834960427354587, -19, false) },
     // e^130
-    unsafe { Decimal::from_parts_unchecked(28726495508178319332673332249621538192, -19, false) },
-    unsafe { Decimal::from_parts_unchecked(78086710735191511717214963161789844250, -19, false) },
-    unsafe { Decimal::from_parts_unchecked(21226168683560893890870118295564590878, -20, false) },
-    unsafe { Decimal::from_parts_unchecked(57698708620330031794130831485493325609, -20, false) },
-    unsafe { Decimal::from_parts_unchecked(15684135116819639406725212333317378882, -21, false) },
+    unsafe { Decimal::from_raw_parts(28726495508178319332673332249621538192, -19, false) },
+    unsafe { Decimal::from_raw_parts(78086710735191511717214963161789844250, -19, false) },
+    unsafe { Decimal::from_raw_parts(21226168683560893890870118295564590878, -20, false) },
+    unsafe { Decimal::from_raw_parts(57698708620330031794130831485493325609, -20, false) },
+    unsafe { Decimal::from_raw_parts(15684135116819639406725212333317378882, -21, false) },
     // e^135
-    unsafe { Decimal::from_parts_unchecked(42633899483147210448936866880765989362, -21, false) },
-    unsafe { Decimal::from_parts_unchecked(11589095424138854283480495676005460415, -22, false) },
-    unsafe { Decimal::from_parts_unchecked(31502427499714519184111642911336978953, -22, false) },
-    unsafe { Decimal::from_parts_unchecked(85632476224822491931954909086237584537, -22, false) },
-    unsafe { Decimal::from_parts_unchecked(23277320404788620254741750385140984218, -23, false) },
+    unsafe { Decimal::from_raw_parts(42633899483147210448936866880765989362, -21, false) },
+    unsafe { Decimal::from_raw_parts(11589095424138854283480495676005460415, -22, false) },
+    unsafe { Decimal::from_raw_parts(31502427499714519184111642911336978953, -22, false) },
+    unsafe { Decimal::from_raw_parts(85632476224822491931954909086237584537, -22, false) },
+    unsafe { Decimal::from_raw_parts(23277320404788620254741750385140984218, -23, false) },
     // e^140
-    unsafe { Decimal::from_parts_unchecked(63274317071555853643430245123511451556, -23, false) },
-    unsafe { Decimal::from_parts_unchecked(17199742630376622641833783925547830056, -24, false) },
-    unsafe { Decimal::from_parts_unchecked(46753747846325154027207734100637066905, -24, false) },
-    unsafe { Decimal::from_parts_unchecked(12708986318302188795555166499146091281, -25, false) },
-    unsafe { Decimal::from_parts_unchecked(34546606567175463231258517866889865270, -25, false) },
+    unsafe { Decimal::from_raw_parts(63274317071555853643430245123511451556, -23, false) },
+    unsafe { Decimal::from_raw_parts(17199742630376622641833783925547830056, -24, false) },
+    unsafe { Decimal::from_raw_parts(46753747846325154027207734100637066905, -24, false) },
+    unsafe { Decimal::from_raw_parts(12708986318302188795555166499146091281, -25, false) },
+    unsafe { Decimal::from_raw_parts(34546606567175463231258517866889865270, -25, false) },
     // e^145
-    unsafe { Decimal::from_parts_unchecked(93907412866476978131540504016909901172, -25, false) },
-    unsafe { Decimal::from_parts_unchecked(25526681395254551047668755808654353440, -26, false) },
-    unsafe { Decimal::from_parts_unchecked(69388714177584033016228037440452491187, -26, false) },
-    unsafe { Decimal::from_parts_unchecked(18861808084906520052196148181812219044, -27, false) },
-    unsafe { Decimal::from_parts_unchecked(51271710169083297668258887684658163998, -27, false) },
+    unsafe { Decimal::from_raw_parts(93907412866476978131540504016909901172, -25, false) },
+    unsafe { Decimal::from_raw_parts(25526681395254551047668755808654353440, -26, false) },
+    unsafe { Decimal::from_raw_parts(69388714177584033016228037440452491187, -26, false) },
+    unsafe { Decimal::from_raw_parts(18861808084906520052196148181812219044, -27, false) },
+    unsafe { Decimal::from_raw_parts(51271710169083297668258887684658163998, -27, false) },
     // e^150
-    unsafe { Decimal::from_parts_unchecked(13937095806663796973183419371414574787, -28, false) },
-    unsafe { Decimal::from_parts_unchecked(37884954272746958042494750441949388081, -28, false) },
-    unsafe { Decimal::from_parts_unchecked(10298198277160991943993878773913738166, -29, false) },
-    unsafe { Decimal::from_parts_unchecked(27993405242674970683739228910895090969, -29, false) },
-    unsafe { Decimal::from_parts_unchecked(76093964787853542218200718174787272690, -29, false) },
+    unsafe { Decimal::from_raw_parts(13937095806663796973183419371414574787, -28, false) },
+    unsafe { Decimal::from_raw_parts(37884954272746958042494750441949388081, -28, false) },
+    unsafe { Decimal::from_raw_parts(10298198277160991943993878773913738166, -29, false) },
+    unsafe { Decimal::from_raw_parts(27993405242674970683739228910895090969, -29, false) },
+    unsafe { Decimal::from_raw_parts(76093964787853542218200718174787272690, -29, false) },
     // e^155
-    unsafe { Decimal::from_parts_unchecked(20684484173822473091270347966282423297, -30, false) },
-    unsafe { Decimal::from_parts_unchecked(56226257460750335807897650819666306371, -30, false) },
-    unsafe { Decimal::from_parts_unchecked(15283881393781745666100414040841103028, -31, false) },
-    unsafe { Decimal::from_parts_unchecked(41545897061040224373905771068319348361, -31, false) },
-    unsafe { Decimal::from_parts_unchecked(11293345702805569478727022021871312858, -32, false) },
+    unsafe { Decimal::from_raw_parts(20684484173822473091270347966282423297, -30, false) },
+    unsafe { Decimal::from_raw_parts(56226257460750335807897650819666306371, -30, false) },
+    unsafe { Decimal::from_raw_parts(15283881393781745666100414040841103028, -31, false) },
+    unsafe { Decimal::from_raw_parts(41545897061040224373905771068319348361, -31, false) },
+    unsafe { Decimal::from_raw_parts(11293345702805569478727022021871312858, -32, false) },
     // e^160
-    unsafe { Decimal::from_parts_unchecked(30698496406442424667364570301654957343, -32, false) },
-    unsafe { Decimal::from_parts_unchecked(83447164942647743609658358092023252638, -32, false) },
-    unsafe { Decimal::from_parts_unchecked(22683291210002404713058390312611402982, -33, false) },
-    unsafe { Decimal::from_parts_unchecked(61659578305794325320049670543781654770, -33, false) },
-    unsafe { Decimal::from_parts_unchecked(16760811125908827725861073497722332472, -34, false) },
+    unsafe { Decimal::from_raw_parts(30698496406442424667364570301654957343, -32, false) },
+    unsafe { Decimal::from_raw_parts(83447164942647743609658358092023252638, -32, false) },
+    unsafe { Decimal::from_raw_parts(22683291210002404713058390312611402982, -33, false) },
+    unsafe { Decimal::from_raw_parts(61659578305794325320049670543781654770, -33, false) },
+    unsafe { Decimal::from_raw_parts(16760811125908827725861073497722332472, -34, false) },
     // e^165
-    unsafe { Decimal::from_parts_unchecked(45560608313792156880112864411796691453, -34, false) },
-    unsafe { Decimal::from_parts_unchecked(12384657367292132198269856467846840036, -35, false) },
-    unsafe { Decimal::from_parts_unchecked(33664989073201642477955778901752989037, -35, false) },
-    unsafe { Decimal::from_parts_unchecked(91510928052956339360089438336198973142, -35, false) },
-    unsafe { Decimal::from_parts_unchecked(24875249283177429446603994479964329509, -36, false) },
+    unsafe { Decimal::from_raw_parts(45560608313792156880112864411796691453, -34, false) },
+    unsafe { Decimal::from_raw_parts(12384657367292132198269856467846840036, -35, false) },
+    unsafe { Decimal::from_raw_parts(33664989073201642477955778901752989037, -35, false) },
+    unsafe { Decimal::from_raw_parts(91510928052956339360089438336198973142, -35, false) },
+    unsafe { Decimal::from_raw_parts(24875249283177429446603994479964329509, -36, false) },
     // e^170
-    unsafe { Decimal::from_parts_unchecked(67617938104850097226297739817614724043, -36, false) },
-    unsafe { Decimal::from_parts_unchecked(18380461242828247026619661332259011810, -37, false) },
-    unsafe { Decimal::from_parts_unchecked(49963273795075782374799992291440821058, -37, false) },
-    unsafe { Decimal::from_parts_unchecked(13581425924747849789093255011954118328, -38, false) },
-    unsafe { Decimal::from_parts_unchecked(36918143295804664423920014322334714971, -38, false) },
+    unsafe { Decimal::from_raw_parts(67617938104850097226297739817614724043, -36, false) },
+    unsafe { Decimal::from_raw_parts(18380461242828247026619661332259011810, -37, false) },
+    unsafe { Decimal::from_raw_parts(49963273795075782374799992291440821058, -37, false) },
+    unsafe { Decimal::from_raw_parts(13581425924747849789093255011954118328, -38, false) },
+    unsafe { Decimal::from_raw_parts(36918143295804664423920014322334714971, -38, false) },
     // e^175
-    unsafe { Decimal::from_parts_unchecked(10035391806143294571946733464755740501, -39, false) },
-    unsafe { Decimal::from_parts_unchecked(27279023188106115192557593199527116730, -39, false) },
-    unsafe { Decimal::from_parts_unchecked(74152073030341784283386937576609008214, -39, false) },
-    unsafe { Decimal::from_parts_unchecked(20156623266094612066329318409141309108, -40, false) },
-    unsafe { Decimal::from_parts_unchecked(54791382747319794379865564450966140139, -40, false) },
+    unsafe { Decimal::from_raw_parts(10035391806143294571946733464755740501, -39, false) },
+    unsafe { Decimal::from_raw_parts(27279023188106115192557593199527116730, -39, false) },
+    unsafe { Decimal::from_raw_parts(74152073030341784283386937576609008214, -39, false) },
+    unsafe { Decimal::from_raw_parts(20156623266094612066329318409141309108, -40, false) },
+    unsafe { Decimal::from_raw_parts(54791382747319794379865564450966140139, -40, false) },
     // e^180
-    unsafe { Decimal::from_parts_unchecked(14893842007818383595644410230322886973, -41, false) },
-    unsafe { Decimal::from_parts_unchecked(40485660085792693262271426689569678698, -41, false) },
-    unsafe { Decimal::from_parts_unchecked(11005143412437994843280976031210742493, -42, false) },
-    unsafe { Decimal::from_parts_unchecked(29915081357615969207184701601447122427, -42, false) },
-    unsafe { Decimal::from_parts_unchecked(81317622051281434061126712044925707902, -42, false) },
+    unsafe { Decimal::from_raw_parts(14893842007818383595644410230322886973, -41, false) },
+    unsafe { Decimal::from_raw_parts(40485660085792693262271426689569678698, -41, false) },
+    unsafe { Decimal::from_raw_parts(11005143412437994843280976031210742493, -42, false) },
+    unsafe { Decimal::from_raw_parts(29915081357615969207184701601447122427, -42, false) },
+    unsafe { Decimal::from_raw_parts(81317622051281434061126712044925707902, -42, false) },
     // e^185
-    unsafe { Decimal::from_parts_unchecked(22104421435549887327561037093210488312, -43, false) },
-    unsafe { Decimal::from_parts_unchecked(60086047116855861250341632178539649714, -43, false) },
-    unsafe { Decimal::from_parts_unchecked(16333081002168329377271943881088378495, -44, false) },
-    unsafe { Decimal::from_parts_unchecked(44397917290943821356155881988414973276, -44, false) },
-    unsafe { Decimal::from_parts_unchecked(12068605179340023095364473314473432497, -45, false) },
+    unsafe { Decimal::from_raw_parts(22104421435549887327561037093210488312, -43, false) },
+    unsafe { Decimal::from_raw_parts(60086047116855861250341632178539649714, -43, false) },
+    unsafe { Decimal::from_raw_parts(16333081002168329377271943881088378495, -44, false) },
+    unsafe { Decimal::from_raw_parts(44397917290943821356155881988414973276, -44, false) },
+    unsafe { Decimal::from_raw_parts(12068605179340023095364473314473432497, -45, false) },
     // e^190
-    unsafe { Decimal::from_parts_unchecked(32805870153846701518250084137059135841, -45, false) },
-    unsafe { Decimal::from_parts_unchecked(89175600705988431420770803324912086042, -45, false) },
-    unsafe { Decimal::from_parts_unchecked(24240441494100795852378097352461489720, -46, false) },
-    unsafe { Decimal::from_parts_unchecked(65892351627238821736753930934534639373, -46, false) },
-    unsafe { Decimal::from_parts_unchecked(17911398206275708900431827624144225532, -47, false) },
+    unsafe { Decimal::from_raw_parts(32805870153846701518250084137059135841, -45, false) },
+    unsafe { Decimal::from_raw_parts(89175600705988431420770803324912086042, -45, false) },
+    unsafe { Decimal::from_raw_parts(24240441494100795852378097352461489720, -46, false) },
+    unsafe { Decimal::from_raw_parts(65892351627238821736753930934534639373, -46, false) },
+    unsafe { Decimal::from_raw_parts(17911398206275708900431827624144225532, -47, false) },
     // e^195
-    unsafe { Decimal::from_parts_unchecked(48688228266413197067093362018659672146, -47, false) },
-    unsafe { Decimal::from_parts_unchecked(13234832615645703553069383005626040404, -48, false) },
-    unsafe { Decimal::from_parts_unchecked(35976005001806811307586628488491091980, -48, false) },
-    unsafe { Decimal::from_parts_unchecked(97792920656963176027414937748815917871, -48, false) },
-    unsafe { Decimal::from_parts_unchecked(26582871917376019734003283472389741150, -49, false) },
+    unsafe { Decimal::from_raw_parts(48688228266413197067093362018659672146, -47, false) },
+    unsafe { Decimal::from_raw_parts(13234832615645703553069383005626040404, -48, false) },
+    unsafe { Decimal::from_raw_parts(35976005001806811307586628488491091980, -48, false) },
+    unsafe { Decimal::from_raw_parts(97792920656963176027414937748815917871, -48, false) },
+    unsafe { Decimal::from_raw_parts(26582871917376019734003283472389741150, -49, false) },
     // e^200
-    unsafe { Decimal::from_parts_unchecked(72259737681257492581774770421893056951, -49, false) },
-    unsafe { Decimal::from_parts_unchecked(19642233186817958656484864137420231201, -50, false) },
-    unsafe { Decimal::from_parts_unchecked(53393125542082459716222599802082679919, -50, false) },
-    unsafe { Decimal::from_parts_unchecked(14513756292567525940523654914390132839, -51, false) },
-    unsafe { Decimal::from_parts_unchecked(39452479992769427900327573211143818566, -51, false) },
+    unsafe { Decimal::from_raw_parts(72259737681257492581774770421893056951, -49, false) },
+    unsafe { Decimal::from_raw_parts(19642233186817958656484864137420231201, -50, false) },
+    unsafe { Decimal::from_raw_parts(53393125542082459716222599802082679919, -50, false) },
+    unsafe { Decimal::from_raw_parts(14513756292567525940523654914390132839, -51, false) },
+    unsafe { Decimal::from_raw_parts(39452479992769427900327573211143818566, -51, false) },
     // e^205
-    unsafe { Decimal::from_parts_unchecked(10724295945198918021924451209369968217, -52, false) },
-    unsafe { Decimal::from_parts_unchecked(29151658790851239660496155224556382547, -52, false) },
-    unsafe { Decimal::from_parts_unchecked(79242424360609307491188688802264059684, -52, false) },
-    unsafe { Decimal::from_parts_unchecked(21540324218248465690209815988756000148, -53, false) },
-    unsafe { Decimal::from_parts_unchecked(58552671901581093475081587475320346051, -53, false) },
+    unsafe { Decimal::from_raw_parts(10724295945198918021924451209369968217, -52, false) },
+    unsafe { Decimal::from_raw_parts(29151658790851239660496155224556382547, -52, false) },
+    unsafe { Decimal::from_raw_parts(79242424360609307491188688802264059684, -52, false) },
+    unsafe { Decimal::from_raw_parts(21540324218248465690209815988756000148, -53, false) },
+    unsafe { Decimal::from_raw_parts(58552671901581093475081587475320346051, -53, false) },
     // e^210
-    unsafe { Decimal::from_parts_unchecked(15916266403779241591571863407774423364, -54, false) },
-    unsafe { Decimal::from_parts_unchecked(43264897742306309199371472477969207063, -54, false) },
-    unsafe { Decimal::from_parts_unchecked(11760618534305001227335647241278102208, -55, false) },
-    unsafe { Decimal::from_parts_unchecked(31968675653239935348846785115930182070, -55, false) },
-    unsafe { Decimal::from_parts_unchecked(86899870108103213822063274684049309002, -55, false) },
+    unsafe { Decimal::from_raw_parts(15916266403779241591571863407774423364, -54, false) },
+    unsafe { Decimal::from_raw_parts(43264897742306309199371472477969207063, -54, false) },
+    unsafe { Decimal::from_raw_parts(11760618534305001227335647241278102208, -55, false) },
+    unsafe { Decimal::from_raw_parts(31968675653239935348846785115930182070, -55, false) },
+    unsafe { Decimal::from_raw_parts(86899870108103213822063274684049309002, -55, false) },
     // e^215
-    unsafe { Decimal::from_parts_unchecked(23621833781030833300746567469515129092, -56, false) },
-    unsafe { Decimal::from_parts_unchecked(64210801521856135516771541362226454717, -56, false) },
-    unsafe { Decimal::from_parts_unchecked(17454305496765194050281862479081601620, -57, false) },
-    unsafe { Decimal::from_parts_unchecked(47445721460229655544587842889161196570, -57, false) },
-    unsafe { Decimal::from_parts_unchecked(12897084248347162974810234147016917437, -58, false) },
+    unsafe { Decimal::from_raw_parts(23621833781030833300746567469515129092, -56, false) },
+    unsafe { Decimal::from_raw_parts(64210801521856135516771541362226454717, -56, false) },
+    unsafe { Decimal::from_raw_parts(17454305496765194050281862479081601620, -57, false) },
+    unsafe { Decimal::from_raw_parts(47445721460229655544587842889161196570, -57, false) },
+    unsafe { Decimal::from_raw_parts(12897084248347162974810234147016917437, -58, false) },
     // e^220
-    unsafe { Decimal::from_parts_unchecked(35057909752387477224025060891275483360, -58, false) },
-    unsafe { Decimal::from_parts_unchecked(95297279023672025386355634986304892255, -58, false) },
-    unsafe { Decimal::from_parts_unchecked(25904486187163901031830171287130712546, -59, false) },
-    unsafe { Decimal::from_parts_unchecked(70415694078135969991088372949671264959, -59, false) },
-    unsafe { Decimal::from_parts_unchecked(19140970165092820820108477320064452781, -60, false) },
+    unsafe { Decimal::from_raw_parts(35057909752387477224025060891275483360, -58, false) },
+    unsafe { Decimal::from_raw_parts(95297279023672025386355634986304892255, -58, false) },
+    unsafe { Decimal::from_raw_parts(25904486187163901031830171287130712546, -59, false) },
+    unsafe { Decimal::from_raw_parts(70415694078135969991088372949671264959, -59, false) },
+    unsafe { Decimal::from_raw_parts(19140970165092820820108477320064452781, -60, false) },
     // e^225
-    unsafe { Decimal::from_parts_unchecked(52030551378848545923020205358078977737, -60, false) },
-    unsafe { Decimal::from_parts_unchecked(14143370233782872265039837168370554989, -61, false) },
-    unsafe { Decimal::from_parts_unchecked(38445666299660540093457531706674996418, -61, false) },
-    unsafe { Decimal::from_parts_unchecked(10450615608536754863982177507098957249, -62, false) },
-    unsafe { Decimal::from_parts_unchecked(28407718504895927718534013347769901830, -62, false) },
+    unsafe { Decimal::from_raw_parts(52030551378848545923020205358078977737, -60, false) },
+    unsafe { Decimal::from_raw_parts(14143370233782872265039837168370554989, -61, false) },
+    unsafe { Decimal::from_raw_parts(38445666299660540093457531706674996418, -61, false) },
+    unsafe { Decimal::from_raw_parts(10450615608536754863982177507098957249, -62, false) },
+    unsafe { Decimal::from_raw_parts(28407718504895927718534013347769901830, -62, false) },
     // e^230
-    unsafe { Decimal::from_parts_unchecked(77220184999838357175621252140277020406, -62, false) },
-    unsafe { Decimal::from_parts_unchecked(20990622567530634724568039312619468559, -63, false) },
-    unsafe { Decimal::from_parts_unchecked(57058427893360872481970148326895352874, -63, false) },
-    unsafe { Decimal::from_parts_unchecked(15510088770296358097556054518881247548, -64, false) },
-    unsafe { Decimal::from_parts_unchecked(42160792462083288741186917596094351517, -64, false) },
+    unsafe { Decimal::from_raw_parts(77220184999838357175621252140277020406, -62, false) },
+    unsafe { Decimal::from_raw_parts(20990622567530634724568039312619468559, -63, false) },
+    unsafe { Decimal::from_raw_parts(57058427893360872481970148326895352874, -63, false) },
+    unsafe { Decimal::from_raw_parts(15510088770296358097556054518881247548, -64, false) },
+    unsafe { Decimal::from_raw_parts(42160792462083288741186917596094351517, -64, false) },
     // e^235
-    unsafe { Decimal::from_parts_unchecked(11460491602311409370637865042895610414, -65, false) },
-    unsafe { Decimal::from_parts_unchecked(31152846067770590954201464312400440172, -65, false) },
-    unsafe { Decimal::from_parts_unchecked(84682215370802619418949577677244718361, -65, false) },
-    unsafe { Decimal::from_parts_unchecked(23019012723610800962705119766260408375, -66, false) },
-    unsafe { Decimal::from_parts_unchecked(62572163995658794914917604846876973579, -66, false) },
+    unsafe { Decimal::from_raw_parts(11460491602311409370637865042895610414, -65, false) },
+    unsafe { Decimal::from_raw_parts(31152846067770590954201464312400440172, -65, false) },
+    unsafe { Decimal::from_raw_parts(84682215370802619418949577677244718361, -65, false) },
+    unsafe { Decimal::from_raw_parts(23019012723610800962705119766260408375, -66, false) },
+    unsafe { Decimal::from_raw_parts(62572163995658794914917604846876973579, -66, false) },
     // e^240
-    unsafe { Decimal::from_parts_unchecked(17008877635675862685398902860714557440, -67, false) },
-    unsafe { Decimal::from_parts_unchecked(46234922999541146273426274861568776275, -67, false) },
-    unsafe { Decimal::from_parts_unchecked(12567955102985587136353369613287969585, -68, false) },
-    unsafe { Decimal::from_parts_unchecked(34163243977334849966907467619116852824, -68, false) },
-    unsafe { Decimal::from_parts_unchecked(92865325304802240908397570249090596499, -68, false) },
+    unsafe { Decimal::from_raw_parts(17008877635675862685398902860714557440, -67, false) },
+    unsafe { Decimal::from_raw_parts(46234922999541146273426274861568776275, -67, false) },
+    unsafe { Decimal::from_raw_parts(12567955102985587136353369613287969585, -68, false) },
+    unsafe { Decimal::from_raw_parts(34163243977334849966907467619116852824, -68, false) },
+    unsafe { Decimal::from_raw_parts(92865325304802240908397570249090596499, -68, false) },
     // e^245
-    unsafe { Decimal::from_parts_unchecked(25243412626998187770632793234418799940, -69, false) },
-    unsafe { Decimal::from_parts_unchecked(68618709832262784296500189663439273040, -69, false) },
-    unsafe { Decimal::from_parts_unchecked(18652499202934394647893057141276968924, -70, false) },
-    unsafe { Decimal::from_parts_unchecked(50702749638683390134216749367456409844, -70, false) },
-    unsafe { Decimal::from_parts_unchecked(13782436299574148088857901819149382333, -71, false) },
+    unsafe { Decimal::from_raw_parts(25243412626998187770632793234418799940, -69, false) },
+    unsafe { Decimal::from_raw_parts(68618709832262784296500189663439273040, -69, false) },
+    unsafe { Decimal::from_raw_parts(18652499202934394647893057141276968924, -70, false) },
+    unsafe { Decimal::from_raw_parts(50702749638683390134216749367456409844, -70, false) },
+    unsafe { Decimal::from_raw_parts(13782436299574148088857901819149382333, -71, false) },
     // e^250
-    unsafe { Decimal::from_parts_unchecked(37464546145026732603499548122029201501, -71, false) },
-    unsafe { Decimal::from_parts_unchecked(10183919499749154121311809801154593781, -72, false) },
-    unsafe { Decimal::from_parts_unchecked(27682763318657855929985771603963318292, -72, false) },
-    unsafe { Decimal::from_parts_unchecked(75249552490640263726958791405721841505, -72, false) },
-    unsafe { Decimal::from_parts_unchecked(20454949113498251750794190253329225813, -73, false) },
+    unsafe { Decimal::from_raw_parts(37464546145026732603499548122029201501, -71, false) },
+    unsafe { Decimal::from_raw_parts(10183919499749154121311809801154593781, -72, false) },
+    unsafe { Decimal::from_raw_parts(27682763318657855929985771603963318292, -72, false) },
+    unsafe { Decimal::from_raw_parts(75249552490640263726958791405721841505, -72, false) },
+    unsafe { Decimal::from_raw_parts(20454949113498251750794190253329225813, -73, false) },
     // e^255
-    unsafe { Decimal::from_parts_unchecked(55602316477276754174041540473381702051, -73, false) },
-    unsafe { Decimal::from_parts_unchecked(15114276650041035425200896657072865078, -74, false) },
-    unsafe { Decimal::from_parts_unchecked(41084863568109398732746435014199662608, -74, false) },
-    unsafe { Decimal::from_parts_unchecked(11168023806191082975759894188368741636, -75, false) },
-    unsafe { Decimal::from_parts_unchecked(30357836172167242865270564060096681892, -75, false) },
+    unsafe { Decimal::from_raw_parts(55602316477276754174041540473381702051, -73, false) },
+    unsafe { Decimal::from_raw_parts(15114276650041035425200896657072865078, -74, false) },
+    unsafe { Decimal::from_raw_parts(41084863568109398732746435014199662608, -74, false) },
+    unsafe { Decimal::from_raw_parts(11168023806191082975759894188368741636, -75, false) },
+    unsafe { Decimal::from_raw_parts(30357836172167242865270564060096681892, -75, false) },
     // e^260
-    unsafe { Decimal::from_parts_unchecked(82521154418138915708209187078469436590, -75, false) },
-    unsafe { Decimal::from_parts_unchecked(22431575451828987090132598854038981998, -76, false) },
-    unsafe { Decimal::from_parts_unchecked(60975343934414732803540925731945597709, -76, false) },
-    unsafe { Decimal::from_parts_unchecked(16574816940096003310288868055969816163, -77, false) },
-    unsafe { Decimal::from_parts_unchecked(45055023698298121117106125112845233389, -77, false) },
+    unsafe { Decimal::from_raw_parts(82521154418138915708209187078469436590, -75, false) },
+    unsafe { Decimal::from_raw_parts(22431575451828987090132598854038981998, -76, false) },
+    unsafe { Decimal::from_raw_parts(60975343934414732803540925731945597709, -76, false) },
+    unsafe { Decimal::from_raw_parts(16574816940096003310288868055969816163, -77, false) },
+    unsafe { Decimal::from_raw_parts(45055023698298121117106125112845233389, -77, false) },
     // e^265
-    unsafe { Decimal::from_parts_unchecked(12247225219987543111692123050999620531, -78, false) },
-    unsafe { Decimal::from_parts_unchecked(33291409764537471210498902650647395181, -78, false) },
-    unsafe { Decimal::from_parts_unchecked(90495434206726229847410205869155592671, -78, false) },
-    unsafe { Decimal::from_parts_unchecked(24599209436265500385962442739613565585, -79, false) },
-    unsafe { Decimal::from_parts_unchecked(66867584005058783767836195501715462777, -79, false) },
+    unsafe { Decimal::from_raw_parts(12247225219987543111692123050999620531, -78, false) },
+    unsafe { Decimal::from_raw_parts(33291409764537471210498902650647395181, -78, false) },
+    unsafe { Decimal::from_raw_parts(90495434206726229847410205869155592671, -78, false) },
+    unsafe { Decimal::from_raw_parts(24599209436265500385962442739613565585, -79, false) },
+    unsafe { Decimal::from_raw_parts(66867584005058783767836195501715462777, -79, false) },
     // e^270
-    unsafe { Decimal::from_parts_unchecked(18176493851390999782546650445313340672, -80, false) },
-    unsafe { Decimal::from_parts_unchecked(49408832941333720129685111047602318635, -80, false) },
-    unsafe { Decimal::from_parts_unchecked(13430713274979613085859250297613421779, -81, false) },
-    unsafe { Decimal::from_parts_unchecked(36508463838620754258131757683218532187, -81, false) },
-    unsafe { Decimal::from_parts_unchecked(99240293837476957258975386473680449662, -81, false) },
+    unsafe { Decimal::from_raw_parts(18176493851390999782546650445313340672, -80, false) },
+    unsafe { Decimal::from_raw_parts(49408832941333720129685111047602318635, -80, false) },
+    unsafe { Decimal::from_raw_parts(13430713274979613085859250297613421779, -81, false) },
+    unsafe { Decimal::from_raw_parts(36508463838620754258131757683218532187, -81, false) },
+    unsafe { Decimal::from_raw_parts(99240293837476957258975386473680449662, -81, false) },
     // e^275
-    unsafe { Decimal::from_parts_unchecked(26976308738934978232765417912571366677, -82, false) },
-    unsafe { Decimal::from_parts_unchecked(73329209843947893397917976493127739665, -82, false) },
-    unsafe { Decimal::from_parts_unchecked(19932945861406369879404057817936726125, -83, false) },
-    unsafe { Decimal::from_parts_unchecked(54183364522718865591003756988762312406, -83, false) },
-    unsafe { Decimal::from_parts_unchecked(14728565518687920080874372478970627032, -84, false) },
+    unsafe { Decimal::from_raw_parts(26976308738934978232765417912571366677, -82, false) },
+    unsafe { Decimal::from_raw_parts(73329209843947893397917976493127739665, -82, false) },
+    unsafe { Decimal::from_raw_parts(19932945861406369879404057817936726125, -83, false) },
+    unsafe { Decimal::from_raw_parts(54183364522718865591003756988762312406, -83, false) },
+    unsafe { Decimal::from_raw_parts(14728565518687920080874372478970627032, -84, false) },
     // e^280
-    unsafe { Decimal::from_parts_unchecked(40036392008717845384002607853055449617, -84, false) },
-    unsafe { Decimal::from_parts_unchecked(10883019687436065167926658665346876179, -85, false) },
-    unsafe { Decimal::from_parts_unchecked(29583114655119494191648535413124937628, -85, false) },
-    unsafe { Decimal::from_parts_unchecked(80415242996231796059259460914427322527, -85, false) },
-    unsafe { Decimal::from_parts_unchecked(21859129376777539785144693723458114365, -86, false) },
+    unsafe { Decimal::from_raw_parts(40036392008717845384002607853055449617, -84, false) },
+    unsafe { Decimal::from_raw_parts(10883019687436065167926658665346876179, -85, false) },
+    unsafe { Decimal::from_raw_parts(29583114655119494191648535413124937628, -85, false) },
+    unsafe { Decimal::from_raw_parts(80415242996231796059259460914427322527, -85, false) },
+    unsafe { Decimal::from_raw_parts(21859129376777539785144693723458114365, -86, false) },
     // e^285
-    unsafe { Decimal::from_parts_unchecked(59419274170829680786039665041625326132, -86, false) },
-    unsafe { Decimal::from_parts_unchecked(16151833323879222366041833857187834774, -87, false) },
-    unsafe { Decimal::from_parts_unchecked(43905235020600150754042953190395882915, -87, false) },
-    unsafe { Decimal::from_parts_unchecked(11934680253072108439235558933754921818, -88, false) },
-    unsafe { Decimal::from_parts_unchecked(32441824460394911649740723321265334285, -88, false) },
+    unsafe { Decimal::from_raw_parts(59419274170829680786039665041625326132, -86, false) },
+    unsafe { Decimal::from_raw_parts(16151833323879222366041833857187834774, -87, false) },
+    unsafe { Decimal::from_raw_parts(43905235020600150754042953190395882915, -87, false) },
+    unsafe { Decimal::from_raw_parts(11934680253072108439235558933754921818, -88, false) },
+    unsafe { Decimal::from_raw_parts(32441824460394911649740723321265334285, -88, false) },
     // e^290
-    unsafe { Decimal::from_parts_unchecked(88186021912749658986094822427733469383, -88, false) },
+    unsafe { Decimal::from_raw_parts(88186021912749658986094822427733469383, -88, false) },
 ];
 
 /// Computes by Taylor series, not accurate values.
-const NATURAL_EXP_NEG: [Decimal; 9] = [
+static NATURAL_EXP_NEG: [Decimal; 9] = [
     // e^-291
-    unsafe { Decimal::from_parts_unchecked(41716298478166806118243377939293045745, 164, false) },
-    unsafe { Decimal::from_parts_unchecked(15346568571889094399003486191226211569, 164, false) },
-    unsafe { Decimal::from_parts_unchecked(56456870701257797059912015304055553681, 165, false) },
-    unsafe { Decimal::from_parts_unchecked(20769322043867093362333818538068856442, 165, false) },
+    unsafe { Decimal::from_raw_parts(41716298478166806118243377939293045745, 164, false) },
+    unsafe { Decimal::from_raw_parts(15346568571889094399003486191226211569, 164, false) },
+    unsafe { Decimal::from_raw_parts(56456870701257797059912015304055553681, 165, false) },
+    unsafe { Decimal::from_raw_parts(20769322043867093362333818538068856442, 165, false) },
     // e^-295
-    unsafe { Decimal::from_parts_unchecked(76406065870075445735958388880036815267, 166, false) },
-    unsafe { Decimal::from_parts_unchecked(28108220814391766921916452972683068317, 166, false) },
-    unsafe { Decimal::from_parts_unchecked(10340436565521946602575863724595250916, 166, false) },
-    unsafe { Decimal::from_parts_unchecked(38040340251929620404917847776950070293, 167, false) },
-    unsafe { Decimal::from_parts_unchecked(13994259113851392172977837187029463838, 167, false) },
+    unsafe { Decimal::from_raw_parts(76406065870075445735958388880036815267, 166, false) },
+    unsafe { Decimal::from_raw_parts(28108220814391766921916452972683068317, 166, false) },
+    unsafe { Decimal::from_raw_parts(10340436565521946602575863724595250916, 166, false) },
+    unsafe { Decimal::from_raw_parts(38040340251929620404917847776950070293, 167, false) },
+    unsafe { Decimal::from_raw_parts(13994259113851392172977837187029463838, 167, false) },
 ];
 
 pub(crate) type Buf = stack_buf::StackVec<u8, 256>;
 
 /// High precision decimal.
 #[derive(Copy, Clone, Debug, Eq)]
+#[repr(C, packed(4))]
 pub struct Decimal {
-    pub(crate) int_val: u128,
+    int_val: u128,
     // A positive scale means a negative power of 10
-    pub(crate) scale: i16,
-    pub(crate) negative: bool,
+    scale: i16,
+    negative: bool,
+    _aligned: u8,
 }
 
 impl Decimal {
     /// Zero value, i.e. `0`.
-    pub const ZERO: Decimal = Decimal {
-        int_val: 0,
-        scale: 0,
-        negative: false,
-    };
+    pub const ZERO: Decimal = unsafe { Decimal::from_raw_parts(0, 0, false) };
 
     /// i.e. `1`.
-    pub const ONE: Decimal = Decimal {
-        int_val: 1,
-        scale: 0,
-        negative: false,
-    };
+    pub const ONE: Decimal = unsafe { Decimal::from_raw_parts(1, 0, false) };
 
     /// i.e. `2`.
-    const TWO: Decimal = Decimal {
-        int_val: 2,
-        scale: 0,
-        negative: false,
-    };
+    const TWO: Decimal = unsafe { Decimal::from_raw_parts(2, 0, false) };
 
     /// i.e. `0.5`.
-    const ZERO_POINT_FIVE: Decimal = Decimal {
-        int_val: 5,
-        scale: 1,
-        negative: false,
-    };
+    const ZERO_POINT_FIVE: Decimal = unsafe { Decimal::from_raw_parts(5, 1, false) };
+
+    #[inline]
+    pub(crate) const unsafe fn from_raw_parts(int_val: u128, scale: i16, negative: bool) -> Decimal {
+        Decimal {
+            int_val,
+            scale,
+            negative,
+            _aligned: 0,
+        }
+    }
 
     /// Creates a `Decimal` from parts without boundary checking.
     ///
@@ -450,11 +446,7 @@ impl Decimal {
     #[inline]
     pub const unsafe fn from_parts_unchecked(int_val: u128, scale: i16, negative: bool) -> Decimal {
         if int_val != 0 {
-            Decimal {
-                int_val,
-                scale,
-                negative,
-            }
+            Decimal::from_raw_parts(int_val, scale, negative)
         } else {
             Decimal::ZERO
         }
@@ -488,21 +480,26 @@ impl Decimal {
         U256::from(self.int_val).count_digits() as u8
     }
 
+    #[inline(always)]
+    pub(crate) const fn int_val(&self) -> u128 {
+        self.int_val
+    }
+
     /// Returns the scale, i.e. the count of decimal digits in the fractional part.
     /// A positive scale means a negative power of 10.
-    #[inline]
+    #[inline(always)]
     pub const fn scale(&self) -> i16 {
         self.scale
     }
 
     /// Returns `true` if the sign bit of the decimal is negative.
-    #[inline]
+    #[inline(always)]
     pub const fn is_sign_negative(&self) -> bool {
         self.negative
     }
 
     /// Returns `true` if the sign bit of the decimal is positive.
-    #[inline]
+    #[inline(always)]
     pub const fn is_sign_positive(&self) -> bool {
         !self.negative
     }
@@ -519,6 +516,13 @@ impl Decimal {
         let mut abs_val = *self;
         abs_val.negative = false;
         abs_val
+    }
+
+    #[inline]
+    pub(crate) fn neg_mut(&mut self) {
+        if !self.is_zero() {
+            self.negative = !self.negative;
+        }
     }
 
     #[inline]
@@ -894,15 +898,15 @@ impl Decimal {
                 }
             }
 
-            return Some(unsafe { Decimal::from_parts_unchecked(self.int_val, self.scale, negative) });
+            return Some(unsafe { Decimal::from_parts_unchecked(self.int_val(), self.scale, negative) });
         }
 
-        let self_int_val = U256::mul128(self.int_val, POWERS_10[e as usize].low());
-        let (int_val, neg) = if self_int_val >= other.int_val {
-            let result = self_int_val - other.int_val;
+        let self_int_val = U256::mul128(self.int_val(), POWERS_10[e as usize].low());
+        let (int_val, neg) = if self_int_val >= other.int_val() {
+            let result = self_int_val - other.int_val();
             (result, negative)
         } else {
-            let result = other.int_val - self_int_val;
+            let result = other.int_val() - self_int_val;
             (U256::from(result), !negative)
         };
 
@@ -1127,7 +1131,7 @@ impl Decimal {
         }
 
         if scale <= 0 {
-            write!(w, "{}", dec.int_val)?;
+            write!(w, "{}", dec.int_val())?;
             w.write_bytes(&ZERO_BUF[..-scale as usize])?;
             if let Some(prec) = precision {
                 if prec != 0 {
@@ -1137,7 +1141,7 @@ impl Decimal {
             }
         } else {
             let mut buf = StackVec::<u8, 40>::new();
-            write!(&mut buf, "{}", dec.int_val)?;
+            write!(&mut buf, "{}", dec.int_val())?;
             let digits = buf.as_slice();
 
             let len = digits.len();
@@ -1973,7 +1977,7 @@ impl Ord for Decimal {
 
         if left.scale == right.scale {
             // fast path for same scale
-            return left.int_val.cmp(&right.int_val);
+            return left.int_val().cmp(&right.int_val());
         }
 
         if left.scale < right.scale {
@@ -1988,7 +1992,7 @@ impl Hash for Decimal {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         let n = self.normalize();
-        n.int_val.hash(state);
+        n.int_val().hash(state);
         n.scale.hash(state);
         n.negative.hash(state);
     }
@@ -1997,6 +2001,12 @@ impl Hash for Decimal {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_decimal_repr() {
+        assert_eq!(std::mem::size_of::<Decimal>(), 20);
+        assert_eq!(std::mem::align_of::<Decimal>(), 4);
+    }
 
     #[test]
     fn test_fmt_internal() {
@@ -2758,7 +2768,7 @@ mod tests {
     }
 
     #[test]
-    fn test_exp_array() {
+    fn generate_exp_array() {
         // [e^0, e^290]
         for i in 0..291 {
             let exponent = Decimal::from(i);
@@ -2768,17 +2778,19 @@ mod tests {
                 println!("// e^{}", i);
             }
             println!(
-                "unsafe {{ Decimal::from_parts_unchecked({}, {}, {}) }},",
-                result.int_val, result.scale, result.negative,
+                "unsafe {{ Decimal::from_raw_parts({}, {}, {}) }},",
+                result.int_val(),
+                result.scale,
+                result.negative,
             );
         }
     }
 
     #[test]
-    fn test_exp_negative_array() {
+    fn generate_exp_negative_array() {
         // e^-291
         const EXP_NEGATIVE_291: Decimal =
-            unsafe { Decimal::from_parts_unchecked(41716298478166806118243377939293045745, 164, false) };
+            unsafe { Decimal::from_raw_parts(41716298478166806118243377939293045745, 164, false) };
         // [e^-299, e^-291]
         for i in 291..300 {
             let result = EXP_NEGATIVE_291.checked_div(NATURAL_EXP[(i - 291) as usize]).unwrap();
@@ -2787,8 +2799,10 @@ mod tests {
                 println!("// e^-{}", i);
             }
             println!(
-                "unsafe {{ Decimal::from_parts_unchecked({}, {}, {}) }},",
-                result.int_val, result.scale, result.negative,
+                "unsafe {{ Decimal::from_raw_parts({}, {}, {}) }},",
+                result.int_val(),
+                result.scale,
+                result.negative,
             );
         }
     }

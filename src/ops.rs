@@ -24,9 +24,7 @@ impl Neg for Decimal {
 
     #[inline]
     fn neg(mut self) -> Self::Output {
-        if !self.is_zero() {
-            self.negative = !self.negative;
-        }
+        self.neg_mut();
         self
     }
 }
@@ -37,7 +35,7 @@ impl Neg for &'_ Decimal {
     #[inline]
     fn neg(self) -> Self::Output {
         if !self.is_zero() {
-            unsafe { Decimal::from_parts_unchecked(self.int_val, self.scale, !self.negative) }
+            unsafe { Decimal::from_raw_parts(self.int_val(), self.scale(), !self.is_sign_negative()) }
         } else {
             Decimal::ZERO
         }

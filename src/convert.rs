@@ -26,11 +26,7 @@ macro_rules! impl_from_small_int {
         impl From<$ty> for Decimal {
             #[inline]
             fn from(val: $ty) -> Self {
-                Decimal {
-                    int_val: val as u128,
-                    scale: 0,
-                    negative: false,
-                }
+                unsafe { Decimal::from_raw_parts(val as u128, 0, false) }
             }
         }
     };
@@ -44,11 +40,7 @@ macro_rules! impl_from_small_int {
                     (val as u128, false)
                 };
 
-                Decimal {
-                    int_val,
-                    scale: 0,
-                    negative
-                }
+                unsafe { Decimal::from_raw_parts(int_val, 0, negative) }
             }
         }
     };
@@ -88,11 +80,7 @@ impl TryFrom<i128> for Decimal {
                 (val as u128, false)
             };
 
-            Ok(Decimal {
-                int_val,
-                scale: 0,
-                negative,
-            })
+            Ok(unsafe { Decimal::from_raw_parts(int_val, 0, negative) })
         }
     }
 }
@@ -105,11 +93,7 @@ impl TryFrom<u128> for Decimal {
         if value > MAX_I128_REPR as u128 {
             Err(DecimalConvertError::Overflow)
         } else {
-            Ok(Decimal {
-                int_val: value,
-                scale: 0,
-                negative: false,
-            })
+            Ok(unsafe { Decimal::from_raw_parts(value, 0, false) })
         }
     }
 }
@@ -394,16 +378,16 @@ impl From<&Decimal> for f64 {
         let n = val.normalize();
 
         // f64 can only accurately represent numbers <= 9007199254740992
-        if n.int_val <= 9007199254740992 {
-            let mut v = n.int_val as f64;
+        if n.int_val() <= 9007199254740992 {
+            let mut v = n.int_val() as f64;
 
-            if n.scale > 0 {
-                v /= POWERS_10[n.scale as usize];
-            } else if n.scale < 0 {
-                v *= POWERS_10[-n.scale as usize];
+            if n.scale() > 0 {
+                v /= POWERS_10[n.scale() as usize];
+            } else if n.scale() < 0 {
+                v *= POWERS_10[-n.scale() as usize];
             }
 
-            if n.negative {
+            if n.is_sign_negative() {
                 v = -v;
             }
 
@@ -436,18 +420,18 @@ impl TryFrom<&Decimal> for u128 {
 
         let d = value.round(0);
 
-        if d.scale == 0 {
-            return Ok(d.int_val);
+        if d.scale() == 0 {
+            return Ok(d.int_val());
         }
 
-        debug_assert!(d.scale < 0);
-        debug_assert_ne!(d.int_val, 0);
+        debug_assert!(d.scale() < 0);
+        debug_assert_ne!(d.int_val(), 0);
 
-        if -d.scale > MAX_PRECISION as i16 {
+        if -d.scale() > MAX_PRECISION as i16 {
             return Err(DecimalConvertError::Overflow);
         }
 
-        let result = POWERS_10[-d.scale as usize].checked_mul(d.int_val);
+        let result = POWERS_10[-d.scale() as usize].checked_mul(d.int_val());
         match result {
             Some(prod) => {
                 if prod.high() != 0 {
@@ -491,24 +475,24 @@ impl TryFrom<&Decimal> for i128 {
     fn try_from(value: &Decimal) -> Result<Self, Self::Error> {
         let d = value.round(0);
 
-        if d.scale == 0 {
-            return to_i128(d.int_val, d.negative);
+        if d.scale() == 0 {
+            return to_i128(d.int_val(), d.is_sign_negative());
         }
 
-        debug_assert!(d.scale < 0);
-        debug_assert_ne!(d.int_val, 0);
+        debug_assert!(d.scale() < 0);
+        debug_assert_ne!(d.int_val(), 0);
 
-        if -d.scale > MAX_PRECISION as i16 {
+        if -d.scale() > MAX_PRECISION as i16 {
             return Err(DecimalConvertError::Overflow);
         }
 
-        let result = POWERS_10[-d.scale as usize].checked_mul(d.int_val);
+        let result = POWERS_10[-d.scale() as usize].checked_mul(d.int_val());
         match result {
             Some(prod) => {
                 if prod.high() != 0 {
                     Err(DecimalConvertError::Overflow)
                 } else {
-                    to_i128(prod.low(), d.negative)
+                    to_i128(prod.low(), d.is_sign_negative())
                 }
             }
             None => Err(DecimalConvertError::Overflow),

@@ -19,7 +19,7 @@ use std::cmp::Ordering;
 use std::mem::MaybeUninit;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
-pub const POWERS_10: [U256; (MAX_PRECISION * 2 + 1) as usize] = [
+pub static POWERS_10: [U256; (MAX_PRECISION * 2 + 1) as usize] = [
     U256::from_u128(1, 0),
     U256::from_u128(10, 0),
     U256::from_u128(100, 0),
@@ -117,7 +117,7 @@ pub const POWERS_10: [U256; (MAX_PRECISION * 2 + 1) as usize] = [
     ),
 ];
 
-pub const ROUNDINGS: [U256; (MAX_PRECISION * 2 + 1) as usize] = [
+pub static ROUNDINGS: [U256; (MAX_PRECISION * 2 + 1) as usize] = [
     U256::from_u128(0, 0),
     U256::from_u128(5, 0),
     U256::from_u128(50, 0),
