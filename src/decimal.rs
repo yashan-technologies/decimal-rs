@@ -423,6 +423,9 @@ impl Decimal {
     /// i.e. `1`.
     pub const ONE: Decimal = unsafe { Decimal::from_raw_parts(1, 0, false) };
 
+    /// i.e. `-1`.
+    const MINUS_ONE: Decimal = unsafe { Decimal::from_raw_parts(1, 0, true) };
+
     /// i.e. `2`.
     const TWO: Decimal = unsafe { Decimal::from_raw_parts(2, 0, false) };
 
@@ -631,11 +634,20 @@ impl Decimal {
             return *self;
         }
 
-        if self.negative {
-            self.trunc(0)
-        } else {
-            self.trunc(0) + 1
+        if self.scale > MAX_PRECISION as i16 {
+            return if self.negative { Decimal::ZERO } else { Decimal::ONE };
         }
+
+        let divisor = POWERS_10[self.scale as usize].low();
+        let int_val = self.int_val / divisor;
+
+        let int_val = if !self.negative && self.int_val % divisor != 0 {
+            int_val + 1
+        } else {
+            int_val
+        };
+
+        unsafe { Decimal::from_parts_unchecked(int_val, 0, self.negative) }
     }
 
     /// Computes the largest integer that is equal to or less than `self`.
@@ -645,11 +657,24 @@ impl Decimal {
             return *self;
         }
 
-        if self.negative {
-            self.trunc(0) - 1
-        } else {
-            self.trunc(0)
+        if self.scale > MAX_PRECISION as i16 {
+            return if self.negative {
+                Decimal::MINUS_ONE
+            } else {
+                Decimal::ZERO
+            };
         }
+
+        let divisor = POWERS_10[self.scale as usize].low();
+        let int_val = self.int_val / divisor;
+
+        let int_val = if !self.negative || self.int_val % divisor == 0 {
+            int_val
+        } else {
+            int_val + 1
+        };
+
+        unsafe { Decimal::from_parts_unchecked(int_val, 0, self.negative) }
     }
 
     /// Truncate a value to have `scale` digits after the decimal point.
@@ -2492,6 +2517,8 @@ mod tests {
         assert_ceil_floor("1e-100", "1", "0");
         assert_ceil_floor("-1e100", "-1e100", "-1e100");
         assert_ceil_floor("-1e-100", "0", "-1");
+        assert_ceil_floor("100e-2", "1", "1");
+        assert_ceil_floor("-100e-2", "-1", "-1");
     }
 
     #[test]
