@@ -268,6 +268,24 @@ fn decimal_exp(bench: &mut Bencher) {
     })
 }
 
+fn decimal_ceil_100_times(bench: &mut Bencher) {
+    let x = parse("12345678901.23456789");
+    bench.iter(|| {
+        for _ in 0..100 {
+            let _n = black_box(&x).ceil();
+        }
+    })
+}
+
+fn decimal_floor_100_times(bench: &mut Bencher) {
+    let x = parse("12345678901.23456789");
+    bench.iter(|| {
+        for _ in 0..100 {
+            let _n = black_box(&x).floor();
+        }
+    })
+}
+
 benchmark_group!(
     decimal_benches,
     decimal_parse,
@@ -297,6 +315,8 @@ benchmark_group!(
     decimal_pow,
     decimal_ln,
     decimal_exp,
+    decimal_ceil_100_times,
+    decimal_floor_100_times,
 );
 
 benchmark_main!(decimal_benches);
