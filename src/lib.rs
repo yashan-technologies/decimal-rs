@@ -80,5 +80,7 @@ mod u256;
 #[cfg(feature = "serde")]
 mod serde;
 
-pub use crate::decimal::{Decimal, MAX_BINARY_SIZE, MAX_PRECISION};
+pub use crate::decimal::{
+    Decimal, DECIMAL128, DECIMAL64, DECIMAL64_MAX_PRECISION, MAX_BINARY_SIZE, MAX_PRECISION, MAX_SCALE, MIN_SCALE,
+};
 pub use crate::error::{DecimalConvertError, DecimalFormatError, DecimalParseError};

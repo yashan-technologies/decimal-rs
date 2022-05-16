@@ -34,6 +34,13 @@ const SIGN_MASK: u8 = 0x01;
 const SCALE_MASK: u8 = 0x02;
 const SCALE_SHIFT: u8 = 1;
 
+/// When the precision of add/subtract/multiply result is not greater than `MAX_PRECISION`, use `DECIMAL128`.
+pub const DECIMAL128: u8 = 1;
+/// When the precision of add/subtract/multiply result is not greater than `DECIMAL64_MAX_PRECISION`, use `DECIMAL64`.
+pub const DECIMAL64: u8 = 2;
+/// Maximum precision of `Decimal64`.
+pub const DECIMAL64_MAX_PRECISION: u8 = 19;
+
 /// Computes by Taylor series, not accurate values.
 static NATURAL_EXP: [Decimal; 291] = [
     // e^0
@@ -914,6 +921,24 @@ impl Decimal {
         Decimal::adjust_scale(int_val, self.scale, negative)
     }
 
+    /// Make sure the two decimals have the same scale and result is not overflow.
+    #[inline]
+    unsafe fn add_internal_with_same_scale<const DECIMAL_MODEL: u8>(
+        &self,
+        other: &Decimal,
+        negative: bool,
+        scale: i16,
+    ) -> Decimal {
+        debug_assert!(self.scale == scale || self.is_zero());
+        debug_assert!(other.scale == scale || other.is_zero());
+        let val = match DECIMAL_MODEL {
+            DECIMAL64 => (self.int_val as u64 + other.int_val as u64) as u128,
+            _ => self.int_val + other.int_val,
+        };
+
+        Decimal::from_raw_parts(val, scale, negative)
+    }
+
     #[inline]
     fn rescale_sub(&self, other: &Decimal, negative: bool) -> Option<Decimal> {
         debug_assert!(self.scale < other.scale);
@@ -972,7 +997,37 @@ impl Decimal {
         Some(unsafe { Decimal::from_parts_unchecked(val, self.scale, neg) })
     }
 
-    /// Add two decimals,
+    #[inline]
+    unsafe fn sub_internal_with_same_scale<const DECIMAL_MODEL: u8>(
+        &self,
+        other: &Decimal,
+        negative: bool,
+        scale: i16,
+    ) -> Decimal {
+        debug_assert!(self.scale == scale || self.is_zero());
+        debug_assert!(other.scale == scale || other.is_zero());
+        let (val, neg) = match DECIMAL_MODEL {
+            DECIMAL64 => {
+                let l = self.int_val as u64;
+                let r = other.int_val as u64;
+                if l >= r {
+                    ((l - r) as u128, negative)
+                } else {
+                    ((r - l) as u128, !negative)
+                }
+            }
+            _ => {
+                if self.int_val >= other.int_val {
+                    (self.int_val - other.int_val, negative)
+                } else {
+                    (other.int_val - self.int_val, !negative)
+                }
+            }
+        };
+        Decimal::from_raw_parts(val, scale, neg)
+    }
+
+    /// Add two decimals.
     /// returning `None` if overflow occurred.
     #[inline]
     pub fn checked_add(&self, other: impl AsRef<Decimal>) -> Option<Decimal> {
@@ -988,6 +1043,44 @@ impl Decimal {
         }
     }
 
+    /// Add two decimals.
+    /// # Safety
+    /// Make sure the decimal is zero or the scale is the same and the result is not overflow.
+    #[inline]
+    pub unsafe fn add_with_same_scale_unchecked<const DECIMAL_MODEL: u8>(
+        &self,
+        other: &Decimal,
+        scale: i16,
+    ) -> Decimal {
+        if self.negative != other.negative {
+            if other.negative {
+                self.sub_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative, scale)
+            } else {
+                other.sub_internal_with_same_scale::<DECIMAL_MODEL>(self, other.negative, scale)
+            }
+        } else {
+            self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative, scale)
+        }
+    }
+
+    /// Add two decimals.
+    /// # Safety
+    /// Make sure the follow conditions
+    /// 1. decimal is zero or the scale is the same.
+    /// 2. the result is not overflow.
+    /// 3. decimal is zero or the negative is the same.
+    #[inline]
+    pub unsafe fn add_with_same_scale_and_negative_unchecked<const DECIMAL_MODEL: u8>(
+        &self,
+        other: &Decimal,
+        scale: i16,
+        negative: bool,
+    ) -> Decimal {
+        debug_assert!(self.negative == negative || self.is_zero());
+        debug_assert!(other.negative == negative || other.is_zero());
+        self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, negative, scale)
+    }
+
     /// Subtract one decimal from another,
     /// returning `None` if overflow occurred.
     #[inline]
@@ -999,6 +1092,24 @@ impl Decimal {
             other.sub_internal(self, !self.negative)
         } else {
             self.sub_internal(other, self.negative)
+        }
+    }
+
+    /// Subtract one decimal from another,
+    /// # Safety
+    /// Make sure two decimal have the same scale or is zero and the result is not overflow.
+    #[inline]
+    pub unsafe fn sub_with_same_scale_unchecked<const DECIMAL_MODEL: u8>(
+        &self,
+        other: &Decimal,
+        scale: i16,
+    ) -> Decimal {
+        if self.negative != other.negative {
+            self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative, scale)
+        } else if self.negative {
+            other.sub_internal_with_same_scale::<DECIMAL_MODEL>(self, !self.negative, scale)
+        } else {
+            self.sub_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative, scale)
         }
     }
 
@@ -1021,6 +1132,19 @@ impl Decimal {
         } else {
             Decimal::adjust_scale(int_val, scale, negative)
         }
+    }
+
+    /// Calculate the product of two decimals,
+    /// # Safety
+    /// Make sure the result scale is scale and the result is not overflow.
+    #[inline]
+    pub unsafe fn mul_unchecked<const DECIMAL_MODEL: u8>(&self, other: &Decimal, scale: i16) -> Decimal {
+        let negative = self.negative ^ other.negative;
+        let val = match DECIMAL_MODEL {
+            DECIMAL64 => ((self.int_val) as u64 * (other.int_val as u64)) as u128,
+            _ => self.int_val * other.int_val,
+        };
+        Decimal::from_raw_parts(val, scale, negative)
     }
 
     /// Checked decimal division.
@@ -3096,6 +3220,314 @@ mod tests {
         assert_fmt_json(
             "0.00000000012345678901234567890123456789012345678e50",
             "1.2345678901234567890123456789012345678E+40",
+        );
+    }
+
+    #[test]
+    fn test_unchecked_add() {
+        fn assert_unchecked_add<const DECIMAL_MODEL: u8>(val1: &str, val2: &str, expected: &str, scale: i16) {
+            let mut var1 = val1.parse::<Decimal>().unwrap();
+            let ret = var1.round_with_precision(38, scale);
+            assert!(!ret);
+            let mut var2 = val2.parse::<Decimal>().unwrap();
+            let ret = var2.round_with_precision(38, scale);
+            assert!(!ret);
+            let expected = expected.parse::<Decimal>().unwrap();
+
+            let result = unsafe { var1.add_with_same_scale_unchecked::<DECIMAL_MODEL>(&var2, scale) };
+            assert_eq!(result, expected);
+        }
+
+        assert_unchecked_add::<DECIMAL64>("2.34", "3.45", "5.79", 2);
+        assert_unchecked_add::<DECIMAL64>("2.34", "-3.45", "-1.11", 2);
+        assert_unchecked_add::<DECIMAL64>("0", "-3.45", "-3.45", 2);
+        assert_unchecked_add::<DECIMAL64>("-2.34", "3.45", "1.11", 2);
+        assert_unchecked_add::<DECIMAL64>("-2.34", "-3.45", "-5.79", 2);
+        assert_unchecked_add::<DECIMAL64>("0", "0", "0", 2);
+        assert_unchecked_add::<DECIMAL64>("9999999999999999.99", "9999999999999999.99", "19999999999999999.98", 2);
+        assert_unchecked_add::<DECIMAL64>("0", "9999999999999999.99", "9999999999999999.99", 2);
+        assert_unchecked_add::<DECIMAL64>(
+            "-9999999999999999.99",
+            "-9999999999999999.99",
+            "-19999999999999999.98",
+            2,
+        );
+        assert_unchecked_add::<DECIMAL64>("-9999999999999999.99", "9999999999999999.99", "0", 2);
+        assert_unchecked_add::<DECIMAL64>("0", "9999999999999999.99", "9999999999999999.99", 2);
+
+        assert_unchecked_add::<DECIMAL128>("2.34", "3.45", "5.79", 2);
+        assert_unchecked_add::<DECIMAL128>("2.34", "-3.45", "-1.11", 2);
+        assert_unchecked_add::<DECIMAL128>("0", "-3.45", "-3.45", 2);
+        assert_unchecked_add::<DECIMAL128>("-2.34", "3.45", "1.11", 2);
+        assert_unchecked_add::<DECIMAL128>("-2.34", "-3.45", "-5.79", 2);
+        assert_unchecked_add::<DECIMAL128>("0", "0", "0", 2);
+        assert_unchecked_add::<DECIMAL128>("9999999999999999.99", "9999999999999999.99", "19999999999999999.98", 2);
+        assert_unchecked_add::<DECIMAL128>("0", "9999999999999999.99", "9999999999999999.99", 2);
+        assert_unchecked_add::<DECIMAL128>(
+            "-9999999999999999.99",
+            "-9999999999999999.99",
+            "-19999999999999999.98",
+            2,
+        );
+        assert_unchecked_add::<DECIMAL128>("-9999999999999999.99", "9999999999999999.99", "0", 2);
+        assert_unchecked_add::<DECIMAL128>("0", "9999999999999999.99", "9999999999999999.99", 2);
+
+        assert_unchecked_add::<DECIMAL128>(
+            "99999999999999999999999999999999999.99",
+            "99999999999999999999999999999999999.99",
+            "199999999999999999999999999999999999.98",
+            2,
+        );
+
+        assert_unchecked_add::<DECIMAL128>(
+            "-99999999999999999999999999999999999.99",
+            "-99999999999999999999999999999999999.99",
+            "-199999999999999999999999999999999999.98",
+            2,
+        );
+
+        assert_unchecked_add::<DECIMAL128>(
+            "-99999999999999999999999999999999999.99",
+            "99999999999999999999999999999999999.99",
+            "0",
+            2,
+        );
+
+        assert_unchecked_add::<DECIMAL128>(
+            "9999999999999999999999999999999999999",
+            "9999999999999999999999999999999999999",
+            "19999999999999999999999999999999999998",
+            0,
+        );
+
+        assert_unchecked_add::<DECIMAL128>(
+            "0.9999999999999999999999999999999999999",
+            "0.9999999999999999999999999999999999999",
+            "1.9999999999999999999999999999999999998",
+            37,
+        );
+
+        fn assert_unchecked_add_with_negative<const DECIMAL_MODEL: u8>(
+            val1: &str,
+            val2: &str,
+            expected: &str,
+            scale: i16,
+            negative: bool,
+        ) {
+            let mut var1 = val1.parse::<Decimal>().unwrap();
+            let ret = var1.round_with_precision(38, scale);
+            assert!(!ret);
+            let mut var2 = val2.parse::<Decimal>().unwrap();
+            let ret = var2.round_with_precision(38, scale);
+            assert!(!ret);
+            let expected = expected.parse::<Decimal>().unwrap();
+
+            let result =
+                unsafe { var1.add_with_same_scale_and_negative_unchecked::<DECIMAL_MODEL>(&var2, scale, negative) };
+            assert_eq!(result, expected);
+        }
+
+        assert_unchecked_add_with_negative::<DECIMAL64>("2.34", "3.45", "5.79", 2, false);
+        assert_unchecked_add_with_negative::<DECIMAL64>("0", "-3.45", "-3.45", 2, true);
+        assert_unchecked_add_with_negative::<DECIMAL64>("-2.34", "-3.45", "-5.79", 2, true);
+        assert_unchecked_add_with_negative::<DECIMAL64>("0", "0", "0", 0, false);
+        assert_unchecked_add_with_negative::<DECIMAL64>(
+            "9999999999999999.99",
+            "9999999999999999.99",
+            "19999999999999999.98",
+            2,
+            false,
+        );
+        assert_unchecked_add_with_negative::<DECIMAL64>("0", "9999999999999999.99", "9999999999999999.99", 2, false);
+        assert_unchecked_add_with_negative::<DECIMAL64>(
+            "-9999999999999999.99",
+            "-9999999999999999.99",
+            "-19999999999999999.98",
+            2,
+            true,
+        );
+
+        assert_unchecked_add_with_negative::<DECIMAL128>("2.34", "3.45", "5.79", 2, false);
+        assert_unchecked_add_with_negative::<DECIMAL128>("0", "-3.45", "-3.45", 2, true);
+        assert_unchecked_add_with_negative::<DECIMAL128>("-2.34", "-3.45", "-5.79", 2, true);
+        assert_unchecked_add_with_negative::<DECIMAL128>("0", "0", "0", 0, false);
+        assert_unchecked_add_with_negative::<DECIMAL128>(
+            "9999999999999999.99",
+            "9999999999999999.99",
+            "19999999999999999.98",
+            2,
+            false,
+        );
+        assert_unchecked_add_with_negative::<DECIMAL128>("0", "9999999999999999.99", "9999999999999999.99", 2, false);
+        assert_unchecked_add_with_negative::<DECIMAL128>(
+            "-9999999999999999.99",
+            "-9999999999999999.99",
+            "-19999999999999999.98",
+            2,
+            true,
+        );
+        assert_unchecked_add_with_negative::<DECIMAL128>(
+            "99999999999999999999999999999999999.99",
+            "99999999999999999999999999999999999.99",
+            "199999999999999999999999999999999999.98",
+            2,
+            false,
+        );
+
+        assert_unchecked_add_with_negative::<DECIMAL128>(
+            "-99999999999999999999999999999999999.99",
+            "-99999999999999999999999999999999999.99",
+            "-199999999999999999999999999999999999.98",
+            2,
+            true,
+        );
+
+        let zero_decimal = unsafe { Decimal::from_raw_parts(0, 2, true) };
+        let val = unsafe { Decimal::from_raw_parts(38, 2, true) };
+        let ret = unsafe { zero_decimal.add_with_same_scale_unchecked::<DECIMAL64>(&val, 2) };
+        assert_eq!(ret, val);
+        let ret = unsafe { val.add_with_same_scale_unchecked::<DECIMAL64>(&zero_decimal, 2) };
+        assert_eq!(ret, val);
+    }
+
+    #[test]
+    fn test_unchecked_sub() {
+        fn assert_unchecked_sub<const DECIMAL_MODEL: u8>(val1: &str, val2: &str, expected: &str, scale: i16) {
+            let mut var1 = val1.parse::<Decimal>().unwrap();
+            let ret = var1.round_with_precision(38, scale);
+            assert!(!ret);
+            let mut var2 = val2.parse::<Decimal>().unwrap();
+            let ret = var2.round_with_precision(38, scale);
+            assert!(!ret);
+            let expected = expected.parse::<Decimal>().unwrap();
+
+            let result = unsafe { var1.sub_with_same_scale_unchecked::<DECIMAL_MODEL>(&var2, scale) };
+            assert_eq!(result, expected);
+        }
+        assert_unchecked_sub::<DECIMAL64>("2.34", "3.45", "-1.11", 2);
+        assert_unchecked_sub::<DECIMAL64>("3.45", "2.34", "1.11", 2);
+        assert_unchecked_sub::<DECIMAL64>("-2.34", "-3.45", "1.11", 2);
+        assert_unchecked_sub::<DECIMAL64>("-3.45", "-2.34", "-1.11", 2);
+        assert_unchecked_sub::<DECIMAL64>("0", "-3.45", "3.45", 2);
+        assert_unchecked_sub::<DECIMAL64>("-3.45", "0", "-3.45", 2);
+        assert_unchecked_sub::<DECIMAL64>("-2.34", "3.45", "-5.79", 2);
+        assert_unchecked_sub::<DECIMAL64>("3.45", "-2.34", "5.79", 2);
+        assert_unchecked_sub::<DECIMAL64>("2.34", "-3.45", "5.79", 2);
+        assert_unchecked_sub::<DECIMAL64>("-3.45", "2.34", "-5.79", 2);
+        assert_unchecked_sub::<DECIMAL64>("0", "0", "0", 2);
+        assert_unchecked_sub::<DECIMAL64>("9999999999999999.99", "9999999999999999.99", "0", 2);
+        assert_unchecked_sub::<DECIMAL64>("-9999999999999999.99", "-9999999999999999.99", "0", 2);
+        assert_unchecked_sub::<DECIMAL64>("9999999999999999.99", "-9999999999999999.99", "19999999999999999.98", 2);
+        assert_unchecked_sub::<DECIMAL64>(
+            "-9999999999999999.99",
+            "9999999999999999.99",
+            "-19999999999999999.98",
+            2,
+        );
+        assert_unchecked_sub::<DECIMAL64>("0", "9999999999999999.99", "-9999999999999999.99", 2);
+        assert_unchecked_sub::<DECIMAL64>("-9999999999999999.99", "0", "-9999999999999999.99", 2);
+        assert_unchecked_sub::<DECIMAL64>("0", "-9999999999999999.99", "9999999999999999.99", 2);
+
+        assert_unchecked_sub::<DECIMAL128>("2.34", "3.45", "-1.11", 2);
+        assert_unchecked_sub::<DECIMAL128>("3.45", "2.34", "1.11", 2);
+        assert_unchecked_sub::<DECIMAL128>("-2.34", "-3.45", "1.11", 2);
+        assert_unchecked_sub::<DECIMAL128>("-3.45", "-2.34", "-1.11", 2);
+        assert_unchecked_sub::<DECIMAL128>("0", "-3.45", "3.45", 2);
+        assert_unchecked_sub::<DECIMAL128>("-3.45", "0", "-3.45", 2);
+        assert_unchecked_sub::<DECIMAL128>("-2.34", "3.45", "-5.79", 2);
+        assert_unchecked_sub::<DECIMAL128>("3.45", "-2.34", "5.79", 2);
+        assert_unchecked_sub::<DECIMAL128>("2.34", "-3.45", "5.79", 2);
+        assert_unchecked_sub::<DECIMAL128>("-3.45", "2.34", "-5.79", 2);
+        assert_unchecked_sub::<DECIMAL128>("0", "0", "0", 2);
+        assert_unchecked_sub::<DECIMAL128>("9999999999999999.99", "9999999999999999.99", "0", 2);
+        assert_unchecked_sub::<DECIMAL128>("-9999999999999999.99", "-9999999999999999.99", "0", 2);
+        assert_unchecked_sub::<DECIMAL128>("9999999999999999.99", "-9999999999999999.99", "19999999999999999.98", 2);
+        assert_unchecked_sub::<DECIMAL128>(
+            "-9999999999999999.99",
+            "9999999999999999.99",
+            "-19999999999999999.98",
+            2,
+        );
+        assert_unchecked_sub::<DECIMAL128>("0", "9999999999999999.99", "-9999999999999999.99", 2);
+        assert_unchecked_sub::<DECIMAL128>("-9999999999999999.99", "0", "-9999999999999999.99", 2);
+        assert_unchecked_sub::<DECIMAL128>("0", "-9999999999999999.99", "9999999999999999.99", 2);
+
+        assert_unchecked_sub::<DECIMAL128>(
+            "-99999999999999999999999999999999999.99",
+            "99999999999999999999999999999999999.99",
+            "-199999999999999999999999999999999999.98",
+            2,
+        );
+
+        assert_unchecked_sub::<DECIMAL128>(
+            "99999999999999999999999999999999999.99",
+            "-99999999999999999999999999999999999.99",
+            "199999999999999999999999999999999999.98",
+            2,
+        );
+
+        assert_unchecked_sub::<DECIMAL128>(
+            "99999999999999999999999999999999999.99",
+            "0",
+            "99999999999999999999999999999999999.99",
+            2,
+        );
+    }
+
+    #[test]
+    fn test_unchecked_mul() {
+        fn assert_unchecked_mul<const DECIMAL_MODEL: u8>(val1: &str, val2: &str, expected: &str, scale: i16) {
+            let var1 = val1.parse::<Decimal>().unwrap();
+            let var2 = val2.parse::<Decimal>().unwrap();
+            let mut expected = expected.parse::<Decimal>().unwrap();
+            let ret = expected.round_with_precision(38, scale);
+            assert!(!ret);
+            let result = unsafe { var1.mul_unchecked::<DECIMAL_MODEL>(&var2, scale) };
+            assert_eq!(result, expected);
+        }
+
+        assert_unchecked_mul::<DECIMAL64>("2.03", "3.18", "6.4554", 4);
+        assert_unchecked_mul::<DECIMAL64>("2.03", "-3.18", "-6.4554", 4);
+        assert_unchecked_mul::<DECIMAL64>("-2.03", "3.18", "-6.4554", 4);
+        assert_unchecked_mul::<DECIMAL64>("999999999", "999999999", "999999998000000001", 0);
+        assert_unchecked_mul::<DECIMAL64>("999999999", "9999999999", "9999999989000000001", 0);
+        assert_unchecked_mul::<DECIMAL64>("999999999", "9999999999", "9999999989000000001", 0);
+        assert_unchecked_mul::<DECIMAL64>("0.999999999", "0.9999999999", "0.9999999989000000001", 19);
+        assert_unchecked_mul::<DECIMAL64>("0", "0.9999999999", "0", 19);
+
+        assert_unchecked_mul::<DECIMAL128>("2.03", "3.18", "6.4554", 4);
+        assert_unchecked_mul::<DECIMAL128>("2.03", "-3.18", "-6.4554", 4);
+        assert_unchecked_mul::<DECIMAL128>("-2.03", "3.18", "-6.4554", 4);
+        assert_unchecked_mul::<DECIMAL128>("999999999", "999999999", "999999998000000001", 0);
+        assert_unchecked_mul::<DECIMAL128>("999999999", "9999999999", "9999999989000000001", 0);
+        assert_unchecked_mul::<DECIMAL128>("999999.999", "99999.99999", "99999999890.00000001", 8);
+        assert_unchecked_mul::<DECIMAL128>("0.999999999", "0.9999999999", "0.9999999989000000001", 19);
+        assert_unchecked_mul::<DECIMAL128>("0", "0.9999999999", "0", 19);
+
+        assert_unchecked_mul::<DECIMAL128>(
+            "9999999999999999999",
+            "9999999999999999999",
+            "99999999999999999980000000000000000001",
+            0,
+        );
+
+        assert_unchecked_mul::<DECIMAL128>(
+            "9999999999999999999",
+            "9999999999999999999",
+            "99999999999999999980000000000000000001",
+            0,
+        );
+        assert_unchecked_mul::<DECIMAL128>(
+            "0.9999999999999999999",
+            "0.9999999999999999999",
+            "0.99999999999999999980000000000000000001",
+            38,
+        );
+        assert_unchecked_mul::<DECIMAL128>(
+            "999999999999.9999999",
+            "99999999999999.99999",
+            "99999999999999999980000000.000000000001",
+            12,
         );
     }
 }
