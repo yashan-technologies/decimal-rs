@@ -1738,7 +1738,7 @@ impl Decimal {
         let exp = ln.checked_mul(&b)?;
         let mut result = exp.exp()?;
 
-        if !self.negative && b.checked_rem(&Decimal::TWO)? == Decimal::ONE {
+        if self.negative && b.checked_rem(&Decimal::TWO)? == Decimal::ONE {
             result = -result;
         }
 
@@ -1901,6 +1901,7 @@ impl Decimal {
     /// Computes the nature exponential of `self`,
     /// calculate with Taylor series, returning
     /// None if the result overflowed.
+    #[inline]
     fn exp_decimal(&self) -> Option<Decimal> {
         // Taylor series:
         //   e^x = 1 + x + x^2 / 2! + x^3 / 3! + x^4 / 4! + ...
@@ -2904,6 +2905,11 @@ mod tests {
         );
         assert_pow_decimal("100", "-170141183460469231731687303715884105720", "0");
         assert_pow_decimal("5", "-4188888888888888888444444444444444000000000000000000000000", "0");
+        assert_pow_decimal(
+            "1.000000000001",
+            "1234567889",
+            "1.0012353302816452027366495735797849363",
+        );
     }
 
     #[test]
