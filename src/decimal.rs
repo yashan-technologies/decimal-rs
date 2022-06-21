@@ -553,29 +553,36 @@ impl Decimal {
     /// Encodes `self` to `writer` as binary bytes.
     /// Returns total size on success, which is not larger than [`MAX_BINARY_SIZE`].
     fn internal_encode<W: io::Write, const COMPACT: bool>(&self, mut writer: W) -> std::io::Result<usize> {
-        let int_bytes: [u8; 16] = self.int_val.to_le_bytes();
-
-        let mut id = 15;
-        while id > 0 && int_bytes[id] == 0 {
-            id -= 1;
-        }
-
-        if COMPACT && id < 2 && self.scale == 0 && self.is_sign_positive() {
-            return if id == 0 {
-                let size = writer.write(&int_bytes[0..1])?;
-                debug_assert_eq!(size, 1);
+        if self.is_zero() {
+            return if COMPACT {
+                writer.write_all(&[0])?;
                 Ok(1)
             } else {
-                let size = writer.write(&int_bytes[0..2])?;
-                debug_assert_eq!(size, 2);
+                writer.write_all(&[0; 3])?;
+                Ok(3)
+            };
+        }
+
+        let int_bytes: [u8; 16] = self.int_val.to_le_bytes();
+
+        let leading_zeros = self.int_val.leading_zeros() >> 3;
+        let trailing_non_zeros = 16 - leading_zeros as usize;
+
+        if COMPACT && trailing_non_zeros <= 2 && self.scale == 0 && self.is_sign_positive() {
+            debug_assert_ne!(trailing_non_zeros, 0);
+            return if trailing_non_zeros == 1 {
+                writer.write_all(&int_bytes[0..1])?;
+                Ok(1)
+            } else {
+                writer.write_all(&int_bytes[0..2])?;
                 Ok(2)
             };
         }
 
         let header = self.encode_header();
         writer.write_all(&header)?;
-        writer.write_all(&int_bytes[0..=id])?;
-        let size = id + 3;
+        writer.write_all(&int_bytes[0..trailing_non_zeros])?;
+        let size = trailing_non_zeros + 2;
 
         Ok(size)
     }
@@ -2259,10 +2266,24 @@ mod tests {
         fn assert_encoding(num: &str) {
             let num = num.parse::<Decimal>().unwrap();
             let mut buf = Vec::new();
-            let size = num.compact_encode(&mut buf).unwrap();
-            assert_eq!(buf.len(), size);
-            let decoded_num = Decimal::decode(&buf);
-            assert_eq!(decoded_num, num);
+
+            // Compact encode
+            {
+                let size = num.compact_encode(&mut buf).unwrap();
+                assert_eq!(buf.len(), size);
+                let decoded_num = Decimal::decode(&buf);
+                assert_eq!(decoded_num, num);
+            }
+
+            buf.clear();
+
+            // Encode
+            {
+                let size = num.encode(&mut buf).unwrap();
+                assert_eq!(buf.len(), size);
+                let decoded_num = Decimal::decode(&buf);
+                assert_eq!(decoded_num, num);
+            }
         }
 
         assert_encoding("0");
@@ -2270,10 +2291,13 @@ mod tests {
         assert_encoding("-255");
         assert_encoding("65535");
         assert_encoding("-65535");
+        assert_encoding("65536");
         assert_encoding("4294967295");
         assert_encoding("-4294967295");
+        assert_encoding("4294967296");
         assert_encoding("18446744073709551615");
         assert_encoding("-18446744073709551615");
+        assert_encoding("18446744073709551616");
         assert_encoding("99999999999999999999999999999999999999");
         assert_encoding("-99999999999999999999999999999999999999");
         assert_encoding("184467440.73709551615");
