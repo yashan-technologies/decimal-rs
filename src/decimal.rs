@@ -1452,7 +1452,7 @@ impl Decimal {
             const SCI_INT_LEN: i16 = 2; // e.g. "1."
 
             // Ignore the sign in exponent part
-            let exp = (precision - self.scale - 1).abs() as u16;
+            let exp = (precision - self.scale - 1).unsigned_abs();
             // 'E' + sign + exponent number
             let exp_len = E_NOTATION_LEN + if exp < 100 { 2 } else { 3 };
             // Remove integer and '.' in scientific notation
@@ -1488,7 +1488,7 @@ impl Decimal {
             return Err(DecimalFormatError::OutOfRange);
         }
         let precision = self.precision() as i16;
-        let exp = (precision - self.scale - 1).abs() as u16;
+        let exp = (precision - self.scale - 1).unsigned_abs();
         let positive_exp = precision > self.scale;
 
         if self.is_zero() && expect_scale > 0 {
@@ -1572,7 +1572,7 @@ impl Decimal {
 
         let mut dec = *self;
         let positive_exp = precision > dec.scale;
-        let exp = (precision - dec.scale - 1).abs() as u16;
+        let exp = (precision - dec.scale - 1).unsigned_abs();
         if positive_exp {
             dec.scale += exp as i16;
             dec.fmt_internal(true, false, true, None, &mut w)?;

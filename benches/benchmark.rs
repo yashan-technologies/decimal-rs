@@ -159,7 +159,7 @@ fn decimal_hash(bench: &mut Bencher) {
     let x = parse("12345678901.23456789");
     let mut hasher = DefaultHasher::new();
     bench.iter(|| {
-        let _n = black_box(&x).hash(&mut hasher);
+        black_box(&x).hash(&mut hasher);
     })
 }
 
