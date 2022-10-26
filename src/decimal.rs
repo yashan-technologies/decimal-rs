@@ -943,7 +943,7 @@ impl Decimal {
             _ => self.int_val + other.int_val,
         };
 
-        Decimal::from_raw_parts(val, scale, negative)
+        Decimal::from_parts_unchecked(val, scale, negative)
     }
 
     #[inline]
@@ -1031,7 +1031,7 @@ impl Decimal {
                 }
             }
         };
-        Decimal::from_raw_parts(val, scale, neg)
+        Decimal::from_parts_unchecked(val, scale, neg)
     }
 
     /// Add two decimals.
@@ -1151,7 +1151,7 @@ impl Decimal {
             DECIMAL64 => ((self.int_val) as u64 * (other.int_val as u64)) as u128,
             _ => self.int_val * other.int_val,
         };
-        Decimal::from_raw_parts(val, scale, negative)
+        Decimal::from_parts_unchecked(val, scale, negative)
     }
 
     /// Checked decimal division.
@@ -3559,5 +3559,40 @@ mod tests {
             "99999999999999999980000000.000000000001",
             12,
         );
+    }
+
+    #[test]
+    fn test_unchecked_and_compare() {
+        unsafe {
+            let left = Decimal::from_raw_parts(123, 2, true);
+            let right = Decimal::from_raw_parts(0, 1, false);
+            let mul_val = left.mul_unchecked::<DECIMAL128>(&right, 3);
+            let expect = Decimal::from_raw_parts(0, 45, false);
+            assert_eq!(mul_val.cmp(&expect), Ordering::Equal);
+        }
+
+        unsafe {
+            let left = Decimal::from_raw_parts(0, 2, true);
+            let right = Decimal::from_raw_parts(0, 2, true);
+            let val = left.sub_with_same_scale_unchecked::<DECIMAL128>(&right, 2);
+            let expect = Decimal::from_raw_parts(0, 45, false);
+            assert_eq!(val.cmp(&expect), Ordering::Equal);
+        }
+
+        unsafe {
+            let left = Decimal::from_raw_parts(0, 2, true);
+            let right = Decimal::from_raw_parts(0, 2, true);
+            let val = left.add_with_same_scale_unchecked::<DECIMAL128>(&right, 2);
+            let expect = Decimal::from_raw_parts(0, 45, false);
+            assert_eq!(val.cmp(&expect), Ordering::Equal);
+        }
+
+        unsafe {
+            let left = Decimal::from_raw_parts(0, 2, true);
+            let right = Decimal::from_raw_parts(0, 2, true);
+            let val = left.add_with_same_scale_and_negative_unchecked::<DECIMAL128>(&right, 2, true);
+            let expect = Decimal::from_raw_parts(0, 45, false);
+            assert_eq!(val.cmp(&expect), Ordering::Equal);
+        }
     }
 }

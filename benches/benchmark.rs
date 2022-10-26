@@ -15,7 +15,7 @@
 //! decimal-rs benchmark
 
 use bencher::{benchmark_group, benchmark_main, black_box, Bencher};
-use decimal_rs::{Decimal, DecimalConvertError, MAX_BINARY_SIZE};
+use decimal_rs::{Decimal, DecimalConvertError, DECIMAL128, MAX_BINARY_SIZE};
 use std::collections::hash_map::DefaultHasher;
 use std::convert::{TryFrom, TryInto};
 use std::hash::Hash;
@@ -286,6 +286,80 @@ fn decimal_floor_100_times(bench: &mut Bencher) {
     })
 }
 
+#[inline(always)]
+fn add_with_same_scale(x: &Decimal, y: &Decimal) -> Decimal {
+    unsafe { x.add_with_same_scale_unchecked::<DECIMAL128>(y, 8) }
+}
+
+fn decimal_uncheck_add_same_scale_100_times(bench: &mut Bencher) {
+    let x = parse("901.23456789");
+    let y = parse("8901.23456789");
+    bench.iter(|| {
+        for _ in 0..100 {
+            let _n = add_with_same_scale(black_box(&x), black_box(&y));
+        }
+    })
+}
+
+#[inline(always)]
+fn add_with_same_scale_negative(x: &Decimal, y: &Decimal) -> Decimal {
+    unsafe { x.add_with_same_scale_and_negative_unchecked::<DECIMAL128>(y, 8, true) }
+}
+
+fn decimal_uncheck_add_same_scale_negative_100_times(bench: &mut Bencher) {
+    let x = parse("1891.23456789");
+    let y = parse("6701.23456789");
+    bench.iter(|| {
+        for _ in 0..100 {
+            let _n = add_with_same_scale_negative(black_box(&x), black_box(&y));
+        }
+    })
+}
+
+#[inline(always)]
+fn sub_with_same_scale(x: &Decimal, y: &Decimal) -> Decimal {
+    unsafe { x.sub_with_same_scale_unchecked::<DECIMAL128>(y, 8) }
+}
+
+fn decimal_uncheck_sub_100_times(bench: &mut Bencher) {
+    let x = parse("11.23456789");
+    let y = parse("71.23456789");
+    bench.iter(|| {
+        for _ in 0..100 {
+            let _n = sub_with_same_scale(black_box(&x), black_box(&y));
+        }
+    })
+}
+
+#[inline(always)]
+fn mull_unchecked(x: &Decimal, y: &Decimal) -> Decimal {
+    unsafe { x.mul_unchecked::<DECIMAL128>(y, 16) }
+}
+
+fn decimal_uncheck_mul_100_times(bench: &mut Bencher) {
+    let x = parse("1901.23456789");
+    let y = parse("7901.23456789");
+    bench.iter(|| {
+        for _ in 0..100 {
+            let _n = mull_unchecked(black_box(&x), black_box(&y));
+        }
+    })
+}
+
+#[inline(always)]
+fn cmp_zero(x: i128) -> bool {
+    x != 0
+}
+
+fn i128_cmp_zero_100_times(bench: &mut Bencher) {
+    let x = 12345678901;
+    bench.iter(|| {
+        for _ in 0..100 {
+            let _n = cmp_zero(black_box(x));
+        }
+    })
+}
+
 benchmark_group!(
     decimal_benches,
     decimal_parse,
@@ -317,6 +391,11 @@ benchmark_group!(
     decimal_exp,
     decimal_ceil_100_times,
     decimal_floor_100_times,
+    decimal_uncheck_add_same_scale_100_times,
+    decimal_uncheck_add_same_scale_negative_100_times,
+    decimal_uncheck_sub_100_times,
+    decimal_uncheck_mul_100_times,
+    i128_cmp_zero_100_times
 );
 
 benchmark_main!(decimal_benches);

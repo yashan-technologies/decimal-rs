@@ -71,7 +71,7 @@ impl TryFrom<i128> for Decimal {
 
     #[inline]
     fn try_from(val: i128) -> std::result::Result<Self, Self::Error> {
-        if val > MAX_I128_REPR || val < -MAX_I128_REPR {
+        if !(-MAX_I128_REPR..=MAX_I128_REPR).contains(&val) {
             Err(DecimalConvertError::Overflow)
         } else {
             let (int_val, negative) = if val < 0 {
