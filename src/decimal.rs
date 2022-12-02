@@ -539,7 +539,7 @@ impl Decimal {
     fn encode_header(&self) -> [u8; 2] {
         let sign = if self.is_sign_negative() { 1 } else { 0 };
 
-        let (scale_sign, abs_scale) = if self.scale < 0 {
+        let (scale_sign, abs_scale) = if self.scale <= 0 {
             (0, (-self.scale) as u8)
         } else {
             (1, self.scale as u8)
