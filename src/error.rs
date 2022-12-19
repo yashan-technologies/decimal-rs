@@ -14,46 +14,80 @@
 
 //! Decimal error definitions.
 
+use std::fmt;
 use std::num::ParseFloatError;
-use thiserror::Error;
 
 /// An error which can be returned when parsing a decimal.
-#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecimalParseError {
     /// Empty string.
-    #[error("cannot parse number from empty string")]
     Empty,
     /// Invalid decimal.
-    #[error("invalid number")]
     Invalid,
     /// Decimal is overflowed.
-    #[error("numeric overflow")]
     Overflow,
     /// Decimal is underflow.
-    #[error("numeric underflow")]
     Underflow,
 }
 
+impl fmt::Display for DecimalParseError {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            DecimalParseError::Empty => write!(f, "cannot parse number from empty string"),
+            DecimalParseError::Invalid => write!(f, "invalid number"),
+            DecimalParseError::Overflow => write!(f, "numeric overflow"),
+            DecimalParseError::Underflow => write!(f, "numeric underflow"),
+        }
+    }
+}
+
 /// An error which can be returned when a conversion between other type and decimal fails.
-#[derive(Clone, Debug, Eq, PartialEq, Error)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DecimalConvertError {
     /// Invalid decimal.
-    #[error("invalid number")]
     Invalid,
     /// Decimal is overflowed.
-    #[error("numeric overflow")]
     Overflow,
 }
 
+impl fmt::Display for DecimalConvertError {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            DecimalConvertError::Invalid => write!(f, "invalid number"),
+            DecimalConvertError::Overflow => write!(f, "numeric overflow"),
+        }
+    }
+}
+
 /// An error which can be returned when format decimal to string.
-#[derive(Clone, Debug, Eq, PartialEq, Error)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DecimalFormatError {
     /// std::fmt::Error
-    #[error("{0}")]
-    Format(std::fmt::Error),
+    Format(fmt::Error),
     /// Decimal is out of range.
-    #[error("Data value out of range")]
     OutOfRange,
+}
+
+impl std::error::Error for DecimalFormatError {
+    #[inline]
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match &self {
+            DecimalFormatError::Format(e) => Some(e),
+            DecimalFormatError::OutOfRange => None,
+        }
+    }
+}
+
+impl fmt::Display for DecimalFormatError {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            DecimalFormatError::Format(e) => write!(f, "{}", e),
+            DecimalFormatError::OutOfRange => write!(f, "Data value out of range"),
+        }
+    }
 }
 
 impl From<DecimalParseError> for DecimalConvertError {
@@ -73,9 +107,9 @@ impl From<ParseFloatError> for DecimalConvertError {
     }
 }
 
-impl From<std::fmt::Error> for DecimalFormatError {
+impl From<fmt::Error> for DecimalFormatError {
     #[inline]
-    fn from(e: std::fmt::Error) -> Self {
+    fn from(e: fmt::Error) -> Self {
         DecimalFormatError::Format(e)
     }
 }
