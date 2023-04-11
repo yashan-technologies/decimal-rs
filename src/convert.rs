@@ -397,7 +397,7 @@ impl From<&Decimal> for f64 {
             val.fmt_internal(true, false, false, None, &mut buf)
                 .expect("failed to format decimal");
             let str = unsafe { std::str::from_utf8_unchecked(&*buf) };
-            fast_float::parse(str).unwrap()
+            str.parse::<f64>().unwrap()
         }
     }
 }
