@@ -520,6 +520,19 @@ impl Decimal {
         self.int_val == 0
     }
 
+    /// Returns `true` if the decimal has fractional portion.
+    #[inline]
+    pub fn has_fract(&self) -> bool {
+        if self.is_zero() || self.scale <= 0 {
+            false
+        } else if self.scale >= MAX_PRECISION as i16 {
+            true
+        } else {
+            let frac = self.int_val % POWERS_10[self.scale as usize].low();
+            frac != 0
+        }
+    }
+
     /// Computes the absolute value of `self`.
     #[inline]
     pub const fn abs(&self) -> Decimal {
@@ -3594,5 +3607,46 @@ mod tests {
             let expect = Decimal::from_raw_parts(0, 45, false);
             assert_eq!(val.cmp(&expect), Ordering::Equal);
         }
+    }
+
+    #[test]
+    fn test_has_frac() {
+        fn assert_has_frac(int_val: u128, scale: i16, expected: bool) {
+            let decimal = Decimal::from_parts(int_val, scale, false).unwrap();
+            let has_frac = decimal.has_fract();
+            println!("decimal: {}, has_fract: {}", decimal, has_frac);
+            assert_eq!(has_frac, expected);
+        }
+
+        assert_has_frac(0, 0, false);
+        assert_has_frac(0, 1, false);
+        assert_has_frac(0, -1, false);
+        assert_has_frac(0, MAX_SCALE, false);
+        assert_has_frac(0, MIN_SCALE, false);
+        assert_has_frac(1, 0, false);
+        assert_has_frac(1, 1, true);
+        assert_has_frac(1, -1, false);
+        assert_has_frac(1, MAX_SCALE, true);
+        assert_has_frac(1, MIN_SCALE, false);
+        assert_has_frac(MAX_I128_REPR as u128, 0, false);
+        assert_has_frac(MAX_I128_REPR as u128, 1, true);
+        assert_has_frac(MAX_I128_REPR as u128, -1, false);
+        assert_has_frac(MAX_I128_REPR as u128, MAX_SCALE, true);
+        assert_has_frac(MAX_I128_REPR as u128, MIN_SCALE, false);
+        assert_has_frac(99_9999_9999_9999_9999_9999_0000_0000_0000_0000_u128, 0, false);
+        assert_has_frac(99_9999_9999_9999_9999_9999_0000_0000_0000_0000_u128, 16, false);
+        assert_has_frac(99_9999_9999_9999_9999_9999_0000_0000_0000_0000_u128, 17, true);
+        assert_has_frac(99_9999_9999_9999_9999_9999_0000_0000_0000_0000_u128, MAX_SCALE, true);
+        assert_has_frac(99_9999_9999_9999_9999_9999_0000_0000_0000_0000_u128, MIN_SCALE, false);
+        assert_has_frac(
+            90_0000_0000_0000_0000_0000_0000_0000_0000_0000_u128,
+            MAX_PRECISION as i16,
+            true,
+        );
+        assert_has_frac(
+            90_0000_0000_0000_0000_0000_0000_0000_0000_0000_u128,
+            MAX_PRECISION as i16 - 1,
+            false,
+        );
     }
 }
