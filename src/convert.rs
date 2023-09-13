@@ -396,7 +396,7 @@ impl From<&Decimal> for f64 {
             let mut buf = Buf::new();
             val.fmt_internal(true, false, false, None, &mut buf)
                 .expect("failed to format decimal");
-            let str = unsafe { std::str::from_utf8_unchecked(&*buf) };
+            let str = unsafe { std::str::from_utf8_unchecked(&buf) };
             str.parse::<f64>().unwrap()
         }
     }
