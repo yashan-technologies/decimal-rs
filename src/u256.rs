@@ -368,19 +368,7 @@ impl U256 {
 
     #[inline(always)]
     pub fn mul128(left: u128, right: u128) -> U256 {
-        const BITS_IN_DWORD_2: u32 = 64;
-        const LOWER_MASK: u128 = u128::MAX >> BITS_IN_DWORD_2;
-
-        let mut low = (left & LOWER_MASK) * (right & LOWER_MASK);
-        let mut t = low >> BITS_IN_DWORD_2;
-        low &= LOWER_MASK;
-        t += (left >> BITS_IN_DWORD_2) * (right & LOWER_MASK);
-        let mut high = t >> BITS_IN_DWORD_2;
-        t &= LOWER_MASK;
-        t += (right >> BITS_IN_DWORD_2) * (left & LOWER_MASK);
-        low += (t & LOWER_MASK) << BITS_IN_DWORD_2;
-        high += t >> BITS_IN_DWORD_2;
-        high += (left >> BITS_IN_DWORD_2) * (right >> BITS_IN_DWORD_2);
+        let (low, high) = fullmul_u128(left, right);
 
         U256::from_u128(low, high)
     }
@@ -437,12 +425,10 @@ fn udiv256_by_128_to_128(u1: u128, u0: u128, mut v: u128, r: &mut u128) -> u128 
     }
 
     // Break divisor up into two 64-bit digits.
-    vn1 = v >> (N_UDWORD_BITS / 2);
-    vn0 = v & 0xFFFF_FFFF_FFFF_FFFF;
+    (vn0, vn1) = split_u128_low_high(v);
 
     // Break right half of dividend into two digits.
-    un1 = un10 >> (N_UDWORD_BITS / 2);
-    un0 = un10 & 0xFFFF_FFFF_FFFF_FFFF;
+    (un0, un1) = split_u128_low_high(un10);
 
     // Compute the first quotient digit, q1.
     q1 = un128 / vn1;
@@ -479,56 +465,48 @@ fn udiv256_by_128_to_128(u1: u128, u0: u128, mut v: u128, r: &mut u128) -> u128 
 #[inline]
 fn full_shl(a: &U256, shift: u32) -> [u128; 3] {
     debug_assert!(shift < N_UDWORD_BITS);
-    let mut u = [0_u128; 3];
     let u_lo = a.low() << shift;
     let u_hi = *a >> (N_UDWORD_BITS - shift);
-    u[0] = u_lo;
-    u[1] = u_hi.low();
-    u[2] = u_hi.high();
-
-    u
+    [u_lo, u_hi.low(), u_hi.high()]
 }
 
 #[inline]
 fn full_shr(u: &[u128; 3], shift: u32) -> U256 {
     debug_assert!(shift < N_UDWORD_BITS);
-    let mut low = u[0] >> shift;
-    let mut high = u[1] >> shift;
     if shift > 0 {
         let sh = N_UDWORD_BITS - shift;
-        low |= u[1] << sh;
-        high |= u[2] << sh;
+        U256::from_u128(u[0] >> shift | u[1] << sh, u[1] >> shift | u[2] << sh)
+    } else {
+        U256::from_u128(u[0] >> shift, u[1] >> shift)
     }
-
-    U256::from_u128(low, high)
 }
 
 // returns (lo, hi)
-#[inline]
-const fn split_u128_to_u128(a: u128) -> (u128, u128) {
+#[inline(always)]
+const fn split_u128_low_high(a: u128) -> (u128, u128) {
     (a & 0xFFFFFFFFFFFFFFFF, a >> (N_UDWORD_BITS / 2))
 }
 
 // returns (lo, hi)
 #[inline]
 const fn fullmul_u128(a: u128, b: u128) -> (u128, u128) {
-    let (a0, a1) = split_u128_to_u128(a);
-    let (b0, b1) = split_u128_to_u128(b);
+    const BITS_IN_DWORD_2: u32 = 64;
+    const LOWER_MASK: u128 = u64::MAX as u128;
 
-    let mut t = a0 * b0;
-    let mut k: u128;
-    let w3: u128;
-    (w3, k) = split_u128_to_u128(t);
+    let (l_low, l_high) = split_u128_low_high(a);
+    let (r_low, r_high) = split_u128_low_high(b);
 
-    t = a1 * b0 + k;
-    let (w1, w2) = split_u128_to_u128(t);
-    t = a0 * b1 + w1;
-    k = t >> 64;
-
-    let w_hi = a1 * b1 + w2 + k;
-    let w_lo = (t << 64) + w3;
-
-    (w_lo, w_hi)
+    let mut low = l_low * r_low;
+    let mut t;
+    (low, t) = split_u128_low_high(low);
+    t += l_high * r_low;
+    let mut high;
+    (t, high) = split_u128_low_high(t);
+    t += r_high * l_low;
+    low += (t & LOWER_MASK) << BITS_IN_DWORD_2;
+    high += t >> BITS_IN_DWORD_2;
+    high += l_high * r_high;
+    (low, high)
 }
 
 #[inline]
@@ -552,7 +530,7 @@ fn fullmul_u256_u128(a: &U256, b: u128) -> [u128; 3] {
 #[inline]
 const fn add_carry(a: u128, b: u128, c: bool) -> (u128, bool) {
     let (res1, overflow1) = b.overflowing_add(c as u128);
-    let (res2, overflow2) = u128::overflowing_add(a, res1);
+    let (res2, overflow2) = a.overflowing_add(res1);
 
     (res2, overflow1 || overflow2)
 }
@@ -560,7 +538,7 @@ const fn add_carry(a: u128, b: u128, c: bool) -> (u128, bool) {
 #[inline]
 const fn sub_carry(a: u128, b: u128, c: bool) -> (u128, bool) {
     let (res1, overflow1) = b.overflowing_add(c as u128);
-    let (res2, overflow2) = u128::overflowing_sub(a, res1);
+    let (res2, overflow2) = a.overflowing_sub(res1);
 
     (res2, overflow1 || overflow2)
 }
