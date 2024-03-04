@@ -419,7 +419,8 @@ pub struct Decimal {
     int_val: u128,
     // A positive scale means a negative power of 10
     scale: i16,
-    negative: bool,
+    // Do !!!NOT!!! use bool type, otherwise `Option` alignment will use bool byte.
+    negative: u8,
     _aligned: u8,
 }
 
@@ -444,7 +445,7 @@ impl Decimal {
         Decimal {
             int_val,
             scale,
-            negative,
+            negative: negative as u8,
             _aligned: 0,
         }
     }
@@ -481,7 +482,7 @@ impl Decimal {
     /// Consumes the `Decimal`, returning `(int_val, scale, negative)`.
     #[inline]
     pub const fn into_parts(self) -> (u128, i16, bool) {
-        (self.int_val, self.scale, self.negative)
+        (self.int_val, self.scale, self.negative())
     }
 
     /// Returns the precision, i.e. the count of significant digits in this decimal.
@@ -502,16 +503,25 @@ impl Decimal {
         self.scale
     }
 
+    #[inline(always)]
+    const fn negative(&self) -> bool {
+        // SAFETY: all the values assigned to `self.negative` are from `bool`.
+        #[allow(clippy::transmute_int_to_bool)]
+        unsafe {
+            std::mem::transmute(self.negative)
+        }
+    }
+
     /// Returns `true` if the sign bit of the decimal is negative.
     #[inline(always)]
     pub const fn is_sign_negative(&self) -> bool {
-        self.negative
+        self.negative()
     }
 
     /// Returns `true` if the sign bit of the decimal is positive.
     #[inline(always)]
     pub const fn is_sign_positive(&self) -> bool {
-        !self.negative
+        !self.negative()
     }
 
     /// Checks if `self` is zero.
@@ -537,14 +547,14 @@ impl Decimal {
     #[inline]
     pub const fn abs(&self) -> Decimal {
         let mut abs_val = *self;
-        abs_val.negative = false;
+        abs_val.negative = false as u8;
         abs_val
     }
 
     #[inline]
     pub(crate) fn neg_mut(&mut self) {
         if !self.is_zero() {
-            self.negative = !self.negative;
+            self.negative = !self.negative() as u8;
         }
     }
 
@@ -662,19 +672,19 @@ impl Decimal {
         }
 
         if self.scale > MAX_PRECISION as i16 {
-            return if self.negative { Decimal::ZERO } else { Decimal::ONE };
+            return if self.negative() { Decimal::ZERO } else { Decimal::ONE };
         }
 
         let divisor = POWERS_10[self.scale as usize].low();
         let int_val = self.int_val / divisor;
 
-        let int_val = if !self.negative && self.int_val % divisor != 0 {
+        let int_val = if !self.negative() && self.int_val % divisor != 0 {
             int_val + 1
         } else {
             int_val
         };
 
-        unsafe { Decimal::from_parts_unchecked(int_val, 0, self.negative) }
+        unsafe { Decimal::from_parts_unchecked(int_val, 0, self.negative()) }
     }
 
     /// Computes the largest integer that is equal to or less than `self`.
@@ -685,7 +695,7 @@ impl Decimal {
         }
 
         if self.scale > MAX_PRECISION as i16 {
-            return if self.negative {
+            return if self.negative() {
                 Decimal::MINUS_ONE
             } else {
                 Decimal::ZERO
@@ -695,13 +705,13 @@ impl Decimal {
         let divisor = POWERS_10[self.scale as usize].low();
         let int_val = self.int_val / divisor;
 
-        let int_val = if !self.negative || self.int_val % divisor == 0 {
+        let int_val = if !self.negative() || self.int_val % divisor == 0 {
             int_val
         } else {
             int_val + 1
         };
 
-        unsafe { Decimal::from_parts_unchecked(int_val, 0, self.negative) }
+        unsafe { Decimal::from_parts_unchecked(int_val, 0, self.negative()) }
     }
 
     /// Truncate a value to have `scale` digits after the decimal point.
@@ -728,7 +738,7 @@ impl Decimal {
 
         let int_val = self.int_val / POWERS_10[e as usize].low();
 
-        unsafe { Decimal::from_parts_unchecked(int_val, real_scale, self.negative) }
+        unsafe { Decimal::from_parts_unchecked(int_val, real_scale, self.negative()) }
     }
 
     /// Round a value to have `scale` digits after the decimal point.
@@ -755,7 +765,7 @@ impl Decimal {
 
         let int_val = (self.int_val + ROUNDINGS[e as usize].low()) / POWERS_10[e as usize].low();
 
-        unsafe { Decimal::from_parts_unchecked(int_val, real_scale, self.negative) }
+        unsafe { Decimal::from_parts_unchecked(int_val, real_scale, self.negative()) }
     }
 
     /// Do bounds checking and rounding according to `precision` and `scale`.
@@ -841,7 +851,7 @@ impl Decimal {
             current_scale += 1;
         }
 
-        unsafe { Decimal::from_parts_unchecked(int_val, current_scale, self.negative) }
+        unsafe { Decimal::from_parts_unchecked(int_val, current_scale, self.negative()) }
     }
 
     /// Normalize a `Decimal`'s scale toward zero.
@@ -1052,14 +1062,14 @@ impl Decimal {
     #[inline]
     pub fn checked_add(&self, other: impl AsRef<Decimal>) -> Option<Decimal> {
         let other = other.as_ref();
-        if self.negative != other.negative {
-            if other.negative {
-                self.sub_internal(other, self.negative)
+        if self.negative() != other.negative() {
+            if other.negative() {
+                self.sub_internal(other, self.negative())
             } else {
-                other.sub_internal(self, other.negative)
+                other.sub_internal(self, other.negative())
             }
         } else {
-            self.add_internal(other, self.negative)
+            self.add_internal(other, self.negative())
         }
     }
 
@@ -1072,14 +1082,14 @@ impl Decimal {
         other: &Decimal,
         scale: i16,
     ) -> Decimal {
-        if self.negative != other.negative {
-            if other.negative {
-                self.sub_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative, scale)
+        if self.negative() != other.negative() {
+            if other.negative() {
+                self.sub_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative(), scale)
             } else {
-                other.sub_internal_with_same_scale::<DECIMAL_MODEL>(self, other.negative, scale)
+                other.sub_internal_with_same_scale::<DECIMAL_MODEL>(self, other.negative(), scale)
             }
         } else {
-            self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative, scale)
+            self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative(), scale)
         }
     }
 
@@ -1096,8 +1106,8 @@ impl Decimal {
         scale: i16,
         negative: bool,
     ) -> Decimal {
-        debug_assert!(self.negative == negative || self.is_zero());
-        debug_assert!(other.negative == negative || other.is_zero());
+        debug_assert!(self.negative() == negative || self.is_zero());
+        debug_assert!(other.negative() == negative || other.is_zero());
         self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, negative, scale)
     }
 
@@ -1106,12 +1116,12 @@ impl Decimal {
     #[inline]
     pub fn checked_sub(&self, other: impl AsRef<Decimal>) -> Option<Decimal> {
         let other = other.as_ref();
-        if self.negative != other.negative {
-            self.add_internal(other, self.negative)
-        } else if self.negative {
-            other.sub_internal(self, !self.negative)
+        if self.negative() != other.negative() {
+            self.add_internal(other, self.negative())
+        } else if self.negative() {
+            other.sub_internal(self, !self.negative())
         } else {
-            self.sub_internal(other, self.negative)
+            self.sub_internal(other, self.negative())
         }
     }
 
@@ -1124,12 +1134,12 @@ impl Decimal {
         other: &Decimal,
         scale: i16,
     ) -> Decimal {
-        if self.negative != other.negative {
-            self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative, scale)
-        } else if self.negative {
-            other.sub_internal_with_same_scale::<DECIMAL_MODEL>(self, !self.negative, scale)
+        if self.negative() != other.negative() {
+            self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative(), scale)
+        } else if self.negative() {
+            other.sub_internal_with_same_scale::<DECIMAL_MODEL>(self, !self.negative(), scale)
         } else {
-            self.sub_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative, scale)
+            self.sub_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative(), scale)
         }
     }
 
@@ -1144,7 +1154,7 @@ impl Decimal {
         }
 
         let scale = self.scale + other.scale;
-        let negative = self.negative ^ other.negative;
+        let negative = self.negative() ^ other.negative();
         let int_val = U256::mul128(self.int_val, other.int_val);
 
         if !int_val.is_decimal_overflowed() && scale == 0 {
@@ -1159,7 +1169,7 @@ impl Decimal {
     /// Make sure the result scale is scale and the result is not overflow.
     #[inline]
     pub unsafe fn mul_unchecked<const DECIMAL_MODEL: u8>(&self, other: &Decimal, scale: i16) -> Decimal {
-        let negative = self.negative ^ other.negative;
+        let negative = self.negative() ^ other.negative();
         let val = match DECIMAL_MODEL {
             DECIMAL64 => ((self.int_val) as u64 * (other.int_val as u64)) as u128,
             _ => self.int_val * other.int_val,
@@ -1191,7 +1201,7 @@ impl Decimal {
             (U256::mul128(self.int_val, POWERS_10[MAX_PRECISION as usize].low()), 0)
         };
 
-        let negative = self.negative ^ other.negative;
+        let negative = self.negative() ^ other.negative();
         let int_val = self_int_val.div128_round(other.int_val);
         let scale = self.scale - other.scale + MAX_PRECISION as i16 + shift_precision as i16;
 
@@ -1214,7 +1224,7 @@ impl Decimal {
 
         if self.scale == other.scale {
             let rem = self.int_val % other.int_val;
-            return Some(unsafe { Decimal::from_parts_unchecked(rem, self.scale, self.negative) });
+            return Some(unsafe { Decimal::from_parts_unchecked(rem, self.scale, self.negative()) });
         }
 
         if self.scale < other.scale {
@@ -1226,7 +1236,7 @@ impl Decimal {
                 let scale = (MAX_PRECISION as i16).min(other.scale - res.scale);
                 let res_val = U256::mul128(res.int_val, POWERS_10[scale as usize].low());
                 let rem = res_val % other.int_val;
-                res = unsafe { Decimal::from_parts_unchecked(rem.low(), res.scale + scale, res.negative) };
+                res = unsafe { Decimal::from_parts_unchecked(rem.low(), res.scale + scale, res.negative()) };
                 if res.scale == other.scale || res.is_zero() {
                     break;
                 }
@@ -1243,7 +1253,7 @@ impl Decimal {
             let rem = self.int_val % other_int_val;
             debug_assert_eq!(rem.high(), 0);
 
-            Some(unsafe { Decimal::from_parts_unchecked(rem.low(), self.scale, self.negative) })
+            Some(unsafe { Decimal::from_parts_unchecked(rem.low(), self.scale, self.negative()) })
         }
     }
 
@@ -1251,7 +1261,7 @@ impl Decimal {
     /// returning None if `self` is negative or the results in overflow.
     #[inline]
     pub fn sqrt(&self) -> Option<Decimal> {
-        if self.negative {
+        if self.negative() {
             return None;
         }
 
@@ -1432,7 +1442,7 @@ impl Decimal {
         }
 
         let precision = self.precision() as i16;
-        let sign_len = if self.negative { 1 } else { 0 };
+        let sign_len = if self.negative() { 1 } else { 0 };
         // include ".", but without sign
         let max_digits = max_width - sign_len;
 
@@ -1766,7 +1776,7 @@ impl Decimal {
         let exp = ln.checked_mul(b)?;
         let mut result = exp.exp()?;
 
-        if self.negative && b.checked_rem(Decimal::TWO)? == Decimal::ONE {
+        if self.negative() && b.checked_rem(Decimal::TWO)? == Decimal::ONE {
             result = -result;
         }
 
@@ -2141,17 +2151,17 @@ impl Ord for Decimal {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         // sign is different
-        if self.negative != other.negative {
-            return if self.negative {
+        if self.negative() != other.negative() {
+            return if self.negative() {
                 Ordering::Less
             } else {
                 Ordering::Greater
             };
         }
 
-        let (left, right) = if self.negative {
+        let (left, right) = if self.negative() {
             // both are negative, so reverse cmp
-            debug_assert!(other.negative);
+            debug_assert!(other.negative());
             (other, self)
         } else {
             (self, other)
@@ -2185,8 +2195,8 @@ impl Hash for Decimal {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let n = self.normalize();
         n.int_val().hash(state);
-        n.scale.hash(state);
-        n.negative.hash(state);
+        n.scale().hash(state);
+        n.negative().hash(state);
     }
 }
 
@@ -2198,6 +2208,8 @@ mod tests {
     fn test_decimal_repr() {
         assert_eq!(std::mem::size_of::<Decimal>(), 20);
         assert_eq!(std::mem::align_of::<Decimal>(), 4);
+        assert_eq!(std::mem::size_of::<Option<Decimal>>(), 24);
+        assert_eq!(std::mem::align_of::<Option<Decimal>>(), 4);
     }
 
     #[test]
@@ -3034,7 +3046,7 @@ mod tests {
                 "unsafe {{ Decimal::from_raw_parts({}, {}, {}) }},",
                 result.int_val(),
                 result.scale,
-                result.negative,
+                result.negative(),
             );
         }
     }
@@ -3055,7 +3067,7 @@ mod tests {
                 "unsafe {{ Decimal::from_raw_parts({}, {}, {}) }},",
                 result.int_val(),
                 result.scale,
-                result.negative,
+                result.negative(),
             );
         }
     }
