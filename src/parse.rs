@@ -18,7 +18,7 @@ use crate::convert::MAX_I128_REPR;
 use crate::decimal::{MAX_PRECISION, MAX_SCALE, MIN_SCALE};
 use crate::error::DecimalParseError;
 use crate::Decimal;
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
@@ -273,8 +273,7 @@ fn parse_str(s: &[u8]) -> Result<(Decimal, &[u8]), DecimalParseError> {
 /// This function handles leading or trailing spaces, and it
 /// accepts `NaN` either.
 #[inline]
-fn from_str(s: &str) -> Result<Decimal, DecimalParseError> {
-    let s = s.as_bytes();
+fn from_bytes(s: &[u8]) -> Result<Decimal, DecimalParseError> {
     let s = eat_whitespaces(s);
     if s.is_empty() {
         return Err(DecimalParseError::Empty);
@@ -300,7 +299,16 @@ impl FromStr for Decimal {
 
     #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        from_str(s)
+        from_bytes(s.as_bytes())
+    }
+}
+
+impl TryFrom<&[u8]> for Decimal {
+    type Error = DecimalParseError;
+
+    #[inline]
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        from_bytes(value)
     }
 }
 
