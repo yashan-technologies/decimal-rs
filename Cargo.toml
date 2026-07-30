@@ -13,7 +13,7 @@ homepage = "https://github.com/cod-technologies/decimal-rs"
 documentation = "https://docs.rs/decimal-rs/"
 
 [dependencies]
-stack-buf = "0.1.6"
+stack-buf = "0.2.0"
 serde = { version = "1.0.229", optional = true }
 
 [dev-dependencies]
