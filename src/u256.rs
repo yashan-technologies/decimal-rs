@@ -232,12 +232,12 @@ impl U256 {
     }
 
     #[inline(always)]
-    pub fn low(&self) -> u128 {
+    pub const fn low(&self) -> u128 {
         self.low
     }
 
     #[inline(always)]
-    pub fn high(&self) -> u128 {
+    pub const fn high(&self) -> u128 {
         self.high
     }
 
@@ -283,7 +283,7 @@ impl U256 {
     }
 
     #[inline(always)]
-    pub fn wrapping_mul(&self, other: U256) -> U256 {
+    pub const fn wrapping_mul(&self, other: U256) -> U256 {
         let res = U256::mul128(self.low(), other.low());
         let lo_hi = self.low().wrapping_mul(other.high());
         let hi_lo = self.high().wrapping_mul(other.low());
@@ -351,14 +351,14 @@ impl U256 {
     }
 
     #[inline(always)]
-    pub fn mul128(left: u128, right: u128) -> U256 {
+    pub const fn mul128(left: u128, right: u128) -> U256 {
         let (low, high) = fullmul_u128(left, right);
 
         U256::from_u128(low, high)
     }
 
     #[inline]
-    fn overflowing_add(self, other: U256) -> (U256, bool) {
+    const fn overflowing_add(self, other: U256) -> (U256, bool) {
         let (low, carry) = self.low().overflowing_add(other.low());
         let (high, carry_overflow) = self.high().overflowing_add(carry as u128);
         let (high, high_overflow) = high.overflowing_add(other.high());
@@ -366,7 +366,7 @@ impl U256 {
     }
 
     #[inline]
-    fn overflowing_sub(self, other: U256) -> (U256, bool) {
+    const fn overflowing_sub(self, other: U256) -> (U256, bool) {
         let (low, borrow) = self.low().overflowing_sub(other.low());
         let (high, borrow_overflow) = self.high().overflowing_sub(borrow as _);
         let (high, high_overflow) = high.overflowing_sub(other.high());
@@ -374,7 +374,7 @@ impl U256 {
     }
 
     #[inline]
-    fn overflowing_mul(self, other: U256) -> (U256, bool) {
+    const fn overflowing_mul(self, other: U256) -> (U256, bool) {
         let res = U256::mul128(self.low(), other.low());
         let (lo_hi, lo_hi_overflow) = self.low().overflowing_mul(other.high());
         let (hi_lo, hi_lo_overflow) = self.high().overflowing_mul(other.low());
@@ -494,7 +494,7 @@ const fn fullmul_u128(a: u128, b: u128) -> (u128, u128) {
 }
 
 #[inline]
-fn fullmul_u256_u128(a: &U256, b: u128) -> [u128; 3] {
+const fn fullmul_u256_u128(a: &U256, b: u128) -> [u128; 3] {
     let mut acc = [0_u128; 3];
     let mut lo: u128;
     let mut carry: u128;

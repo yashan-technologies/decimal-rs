@@ -552,14 +552,14 @@ impl Decimal {
     }
 
     #[inline]
-    pub(crate) fn neg_mut(&mut self) {
+    pub(crate) const fn neg_mut(&mut self) {
         if !self.is_zero() {
             self.negative = !self.negative() as u8;
         }
     }
 
     #[inline]
-    fn encode_header(&self) -> [u8; 2] {
+    const fn encode_header(&self) -> [u8; 2] {
         let sign = if self.is_sign_negative() { 1 } else { 0 };
 
         let (scale_sign, abs_scale) = if self.scale <= 0 {
@@ -953,7 +953,7 @@ impl Decimal {
 
     /// Make sure the two decimals have the same scale and result is not overflow.
     #[inline]
-    unsafe fn add_internal_with_same_scale<const DECIMAL_MODEL: u8>(
+    const unsafe fn add_internal_with_same_scale<const DECIMAL_MODEL: u8>(
         &self,
         other: &Decimal,
         negative: bool,
@@ -1028,7 +1028,7 @@ impl Decimal {
     }
 
     #[inline]
-    unsafe fn sub_internal_with_same_scale<const DECIMAL_MODEL: u8>(
+    const unsafe fn sub_internal_with_same_scale<const DECIMAL_MODEL: u8>(
         &self,
         other: &Decimal,
         negative: bool,
@@ -1077,7 +1077,7 @@ impl Decimal {
     /// # Safety
     /// Make sure the decimal is zero or the scale is the same and the result is not overflow.
     #[inline]
-    pub unsafe fn add_with_same_scale_unchecked<const DECIMAL_MODEL: u8>(
+    pub const unsafe fn add_with_same_scale_unchecked<const DECIMAL_MODEL: u8>(
         &self,
         other: &Decimal,
         scale: i16,
@@ -1100,7 +1100,7 @@ impl Decimal {
     /// 2. the result is not overflow.
     /// 3. decimal is zero or the negative is the same.
     #[inline]
-    pub unsafe fn add_with_same_scale_and_negative_unchecked<const DECIMAL_MODEL: u8>(
+    pub const unsafe fn add_with_same_scale_and_negative_unchecked<const DECIMAL_MODEL: u8>(
         &self,
         other: &Decimal,
         scale: i16,
@@ -1129,7 +1129,7 @@ impl Decimal {
     /// # Safety
     /// Make sure two decimal have the same scale or is zero and the result is not overflow.
     #[inline]
-    pub unsafe fn sub_with_same_scale_unchecked<const DECIMAL_MODEL: u8>(
+    pub const unsafe fn sub_with_same_scale_unchecked<const DECIMAL_MODEL: u8>(
         &self,
         other: &Decimal,
         scale: i16,
@@ -1168,7 +1168,7 @@ impl Decimal {
     /// # Safety
     /// Make sure the result scale is scale and the result is not overflow.
     #[inline]
-    pub unsafe fn mul_unchecked<const DECIMAL_MODEL: u8>(&self, other: &Decimal, scale: i16) -> Decimal {
+    pub const unsafe fn mul_unchecked<const DECIMAL_MODEL: u8>(&self, other: &Decimal, scale: i16) -> Decimal {
         let negative = self.negative() ^ other.negative();
         let val = match DECIMAL_MODEL {
             DECIMAL64 => ((self.int_val) as u64 * (other.int_val as u64)) as u128,
