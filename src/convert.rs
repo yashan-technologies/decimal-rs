@@ -277,17 +277,11 @@ fn base2_to_decimal<const IS_F64: bool>(bits: u128, exponent2: i32, negative: bo
         // multiplied by 10 to compensate. If the exponent10 is too big, this
         // will cause the mantissa to overflow.
         match bits.checked_mul(10) {
-            Some(prod) => {
-                if prod <= MAX_I128_REPR as u128 {
-                    bits *= 10;
-                    exponent10 -= 1;
-                } else {
-                    return None;
-                }
+            Some(prod) if prod <= MAX_I128_REPR as u128 => {
+                bits = prod;
+                exponent10 -= 1;
             }
-            None => {
-                return None;
-            }
+            _ => return None,
         }
     }
 
@@ -706,8 +700,8 @@ mod tests {
     #[test]
     #[allow(clippy::excessive_precision)]
     fn test_try_from_f32() {
-        assert_try_from_overflow(std::f32::INFINITY);
-        assert_try_from_overflow(std::f32::NEG_INFINITY);
+        assert_try_from_overflow(f32::INFINITY);
+        assert_try_from_overflow(f32::NEG_INFINITY);
         assert_try_from(0.0f32, "0");
         assert_try_from(-0.0f32, "0");
         assert_try_from(0.000001f32, "0.000000999999997");
@@ -735,8 +729,8 @@ mod tests {
     #[test]
     #[allow(clippy::excessive_precision)]
     fn test_try_from_f64() {
-        assert_try_from_overflow(std::f64::INFINITY);
-        assert_try_from_overflow(std::f64::NEG_INFINITY);
+        assert_try_from_overflow(f64::INFINITY);
+        assert_try_from_overflow(f64::NEG_INFINITY);
         assert_try_from(0.0f64, "0");
         assert_try_from(-0.0f64, "0");
         assert_try_from(0.000000000000001f64, "0.0000000000000010000000000000001");

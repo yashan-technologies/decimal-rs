@@ -678,7 +678,7 @@ impl Decimal {
         let divisor = POWERS_10[self.scale as usize].low();
         let int_val = self.int_val / divisor;
 
-        let int_val = if !self.negative() && self.int_val % divisor != 0 {
+        let int_val = if !self.negative() && !self.int_val.is_multiple_of(divisor) {
             int_val + 1
         } else {
             int_val
@@ -705,7 +705,7 @@ impl Decimal {
         let divisor = POWERS_10[self.scale as usize].low();
         let int_val = self.int_val / divisor;
 
-        let int_val = if !self.negative() || self.int_val % divisor == 0 {
+        let int_val = if !self.negative() || self.int_val.is_multiple_of(divisor) {
             int_val
         } else {
             int_val + 1
@@ -834,7 +834,7 @@ impl Decimal {
         let mut int_val = self.int_val;
 
         while current_scale > scale {
-            if int_val % 10 > 0 {
+            if !int_val.is_multiple_of(10) {
                 break;
             }
 
@@ -1588,7 +1588,7 @@ impl Decimal {
             let mut int_val = self.int_val;
             let mut zero_count = 0;
             while int_val != 0 {
-                if int_val % 10 != 0 {
+                if !int_val.is_multiple_of(10) {
                     break;
                 }
                 zero_count += 1;

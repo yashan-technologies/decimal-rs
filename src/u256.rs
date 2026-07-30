@@ -475,7 +475,7 @@ fn full_shr(u: &[u128; 3], shift: u32) -> U256 {
     debug_assert!(shift < N_UDWORD_BITS);
     if shift > 0 {
         let sh = N_UDWORD_BITS - shift;
-        U256::from_u128(u[0] >> shift | u[1] << sh, u[1] >> shift | u[2] << sh)
+        U256::from_u128((u[0] >> shift) | (u[1] << sh), (u[1] >> shift) | (u[2] << sh))
     } else {
         U256::from_u128(u[0] >> shift, u[1] >> shift)
     }
@@ -801,7 +801,7 @@ impl Shr<u32> for U256 {
         let (hi, lo) = if rhs == 0 {
             return self;
         } else if rhs < 128 {
-            (self.high() >> rhs, self.low() >> rhs | (self.high() << (128 - rhs)))
+            (self.high() >> rhs, (self.low() >> rhs) | (self.high() << (128 - rhs)))
         } else {
             (0, self.high() >> (rhs & 0x7f))
         };

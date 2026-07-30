@@ -46,7 +46,7 @@ impl<'de> serde::Deserialize<'de> for Decimal {
     {
         struct DecimalVisitor;
 
-        impl<'de> serde::de::Visitor<'de> for DecimalVisitor {
+        impl serde::de::Visitor<'_> for DecimalVisitor {
             type Value = Decimal;
 
             #[inline]

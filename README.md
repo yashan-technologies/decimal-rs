@@ -59,7 +59,7 @@ assert_eq!(n1, n2);
 
 ## Rust Version
 
-This version of `decimal-rs` requires Rust 1.51 or later.
+This version of `decimal-rs` requires Rust 1.87 or later.
 
 ## License
 

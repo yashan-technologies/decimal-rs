@@ -93,7 +93,7 @@ fn extract_exponent(s: &[u8], decimal_is_zero: bool) -> Result<(i16, &[u8]), Dec
 
 /// Checks if the input string is a valid decimal and if so, locate the integral
 /// part, the fractional part, and the exponent in it.
-fn parse_decimal(s: &[u8]) -> Result<(Parts, &[u8]), DecimalParseError> {
+fn parse_decimal(s: &[u8]) -> Result<(Parts<'_>, &[u8]), DecimalParseError> {
     let (sign, s) = extract_sign(s);
 
     if s.is_empty() {
