@@ -14,11 +14,11 @@ documentation = "https://docs.rs/decimal-rs/"
 
 [dependencies]
 stack-buf = "0.1.6"
-serde = { version = "1.0.138", optional = true }
+serde = { version = "1.0.229", optional = true }
 
 [dev-dependencies]
 bencher = "0.1.5"
-serde_json = "1.0.82"
+serde_json = "1.0.151"
 
 [[bench]]
 name = "benchmark"
