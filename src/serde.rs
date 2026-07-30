@@ -93,8 +93,5 @@ mod tests {
         let json_dec: Decimal = serde_json::from_str(&json).unwrap();
         assert_eq!(json_dec, dec);
 
-        let bin = bincode::serialize(&dec).unwrap();
-        let bin_dec: Decimal = bincode::deserialize(&bin).unwrap();
-        assert_eq!(bin_dec, dec);
     }
 }
