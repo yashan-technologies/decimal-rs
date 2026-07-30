@@ -14,9 +14,9 @@
 
 //! Conversion between `Decimal` and primitive number types.
 
+use crate::DecimalConvertError;
 use crate::decimal::{Buf, Decimal, MAX_PRECISION, MAX_SCALE, MIN_SCALE};
 use crate::u256::POWERS_10;
-use crate::DecimalConvertError;
 use std::convert::TryFrom;
 
 pub(crate) const MAX_I128_REPR: i128 = 99_9999_9999_9999_9999_9999_9999_9999_9999_9999_i128;
@@ -58,11 +58,7 @@ impl_from_small_int!(SIGNED i8, i16, i32, i64, isize);
 impl From<bool> for Decimal {
     #[inline]
     fn from(b: bool) -> Self {
-        if b {
-            Decimal::ONE
-        } else {
-            Decimal::ZERO
-        }
+        if b { Decimal::ONE } else { Decimal::ZERO }
     }
 }
 

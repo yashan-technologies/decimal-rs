@@ -92,6 +92,5 @@ mod tests {
         assert_eq!(json, r#""123.456""#);
         let json_dec: Decimal = serde_json::from_str(&json).unwrap();
         assert_eq!(json_dec, dec);
-
     }
 }

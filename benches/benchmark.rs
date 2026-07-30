@@ -14,8 +14,8 @@
 
 //! decimal-rs benchmark
 
-use bencher::{benchmark_group, benchmark_main, black_box, Bencher};
-use decimal_rs::{Decimal, DecimalConvertError, DECIMAL128, MAX_BINARY_SIZE};
+use bencher::{Bencher, benchmark_group, benchmark_main, black_box};
+use decimal_rs::{DECIMAL128, Decimal, DecimalConvertError, MAX_BINARY_SIZE};
 use std::collections::hash_map::DefaultHasher;
 use std::convert::{TryFrom, TryInto};
 use std::hash::Hash;

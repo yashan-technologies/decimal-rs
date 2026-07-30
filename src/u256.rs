@@ -267,31 +267,19 @@ impl U256 {
     #[inline(always)]
     pub fn checked_add<T: Into<U256>>(&self, other: T) -> Option<U256> {
         let (res, overflow) = self.overflowing_add(other.into());
-        if overflow {
-            None
-        } else {
-            Some(res)
-        }
+        if overflow { None } else { Some(res) }
     }
 
     #[inline(always)]
     pub fn checked_sub<T: Into<U256>>(&self, other: T) -> Option<U256> {
         let (res, overflow) = self.overflowing_sub(other.into());
-        if overflow {
-            None
-        } else {
-            Some(res)
-        }
+        if overflow { None } else { Some(res) }
     }
 
     #[inline(always)]
     pub fn checked_mul<T: Into<U256>>(&self, other: T) -> Option<U256> {
         let (res, overflow) = self.overflowing_mul(other.into());
-        if overflow {
-            None
-        } else {
-            Some(res)
-        }
+        if overflow { None } else { Some(res) }
     }
 
     #[inline(always)]
@@ -348,11 +336,7 @@ impl U256 {
             //    remain / other >= 1 / 2
             // => other - remain <= remain
             let sub_result = other - rem;
-            if rem >= sub_result {
-                result + 1
-            } else {
-                result
-            }
+            if rem >= sub_result { result + 1 } else { result }
         }
     }
 
