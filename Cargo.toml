@@ -1,6 +1,6 @@
 [package]
 name = "decimal-rs"
-version = "0.1.44"
+version = "0.2.0"
 authors = ["David Li <davidli2010@foxmail.com>"]
 edition = "2024"
 rust-version = "1.87"
