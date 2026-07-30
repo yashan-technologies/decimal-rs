@@ -2,7 +2,7 @@
 name = "decimal-rs"
 version = "0.1.44"
 authors = ["David Li <davidli2010@foxmail.com>"]
-edition = "2018"
+edition = "2024"
 rust-version = "1.87"
 readme = "README.md"
 license = "Apache-2.0"

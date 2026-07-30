@@ -457,7 +457,7 @@ impl Decimal {
     #[inline]
     pub const unsafe fn from_parts_unchecked(int_val: u128, scale: i16, negative: bool) -> Decimal {
         if int_val != 0 {
-            Decimal::from_raw_parts(int_val, scale, negative)
+            unsafe { Decimal::from_raw_parts(int_val, scale, negative) }
         } else {
             Decimal::ZERO
         }
@@ -966,7 +966,7 @@ impl Decimal {
             _ => self.int_val + other.int_val,
         };
 
-        Decimal::from_parts_unchecked(val, scale, negative)
+        unsafe { Decimal::from_parts_unchecked(val, scale, negative) }
     }
 
     #[inline]
@@ -1054,7 +1054,7 @@ impl Decimal {
                 }
             }
         };
-        Decimal::from_parts_unchecked(val, scale, neg)
+        unsafe { Decimal::from_parts_unchecked(val, scale, neg) }
     }
 
     /// Add two decimals.
@@ -1084,12 +1084,12 @@ impl Decimal {
     ) -> Decimal {
         if self.negative() != other.negative() {
             if other.negative() {
-                self.sub_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative(), scale)
+                unsafe { self.sub_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative(), scale) }
             } else {
-                other.sub_internal_with_same_scale::<DECIMAL_MODEL>(self, other.negative(), scale)
+                unsafe { other.sub_internal_with_same_scale::<DECIMAL_MODEL>(self, other.negative(), scale) }
             }
         } else {
-            self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative(), scale)
+            unsafe { self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative(), scale) }
         }
     }
 
@@ -1108,7 +1108,7 @@ impl Decimal {
     ) -> Decimal {
         debug_assert!(self.negative() == negative || self.is_zero());
         debug_assert!(other.negative() == negative || other.is_zero());
-        self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, negative, scale)
+        unsafe { self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, negative, scale) }
     }
 
     /// Subtract one decimal from another,
@@ -1135,11 +1135,11 @@ impl Decimal {
         scale: i16,
     ) -> Decimal {
         if self.negative() != other.negative() {
-            self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative(), scale)
+            unsafe { self.add_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative(), scale) }
         } else if self.negative() {
-            other.sub_internal_with_same_scale::<DECIMAL_MODEL>(self, !self.negative(), scale)
+            unsafe { other.sub_internal_with_same_scale::<DECIMAL_MODEL>(self, !self.negative(), scale) }
         } else {
-            self.sub_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative(), scale)
+            unsafe { self.sub_internal_with_same_scale::<DECIMAL_MODEL>(other, self.negative(), scale) }
         }
     }
 
@@ -1174,7 +1174,7 @@ impl Decimal {
             DECIMAL64 => ((self.int_val) as u64 * (other.int_val as u64)) as u128,
             _ => self.int_val * other.int_val,
         };
-        Decimal::from_parts_unchecked(val, scale, negative)
+        unsafe { Decimal::from_parts_unchecked(val, scale, negative) }
     }
 
     /// Checked decimal division.
